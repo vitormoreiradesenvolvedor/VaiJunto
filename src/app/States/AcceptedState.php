@@ -16,10 +16,11 @@ class AcceptedState implements RideState
 
     public function start(Ride $ride): void
     {
-        $ride->update([
-            'status'     => 'in_progress',
-            'started_at' => now(),
-        ]);
+        $ride->status = 'in_progress';
+        $ride->started_at = now();
+        if ($ride->exists) {
+            $ride->save();
+        }
     }
 
     public function complete(Ride $ride): void
@@ -31,9 +32,10 @@ class AcceptedState implements RideState
 
     public function cancel(Ride $ride): void
     {
-        $ride->update([
-            'status'       => 'cancelled',
-            'cancelled_at' => now(),
-        ]);
+        $ride->status = 'cancelled';
+        $ride->cancelled_at = now();
+        if ($ride->exists) {
+            $ride->save();
+        }
     }
 }

@@ -24,18 +24,20 @@ class InProgressState implements RideState
 
     public function complete(Ride $ride): void
     {
-        $ride->update([
-            'status'       => 'completed',
-            'completed_at' => now(),
-        ]);
+        $ride->status = 'completed';
+        $ride->completed_at = now();
+        if ($ride->exists) {
+            $ride->save();
+        }
         event(new RideCompleted($ride));
     }
 
     public function cancel(Ride $ride): void
     {
-        $ride->update([
-            'status'       => 'cancelled',
-            'cancelled_at' => now(),
-        ]);
+        $ride->status = 'cancelled';
+        $ride->cancelled_at = now();
+        if ($ride->exists) {
+            $ride->save();
+        }
     }
 }
