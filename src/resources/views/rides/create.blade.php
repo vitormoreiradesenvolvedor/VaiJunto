@@ -13,12 +13,12 @@
 
     @if(!$mapsKey)
         <div class="mb-4 bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-lg px-4 py-3 text-sm">
-            <strong>Atenção:</strong> Configure <code>GOOGLE_MAPS_API_KEY</code> no <code>src/.env</code> para habilitar o mapa e o autocomplete de endereços.
+            <strong>Atenção:</strong> Configure <code>GOOGLE_MAPS_API_KEY</code> no <code>src/.env</code>.
         </div>
     @endif
 
     <div id="alert-success" class="hidden mb-4 bg-green-100 border border-green-300 text-green-800 rounded-lg px-4 py-3 text-sm">
-        Solicitação enviada com sucesso! Aguarde um motorista aceitar.
+        Solicitação enviada! Aguarde um motorista aceitar.
         <a href="{{ route('dashboard') }}" class="underline ml-1">Ver minhas solicitações</a>
     </div>
     <div id="alert-error" class="hidden mb-4 bg-red-100 border border-red-300 text-red-800 rounded-lg px-4 py-3 text-sm"></div>
@@ -41,7 +41,7 @@
                     </svg>
                 </button>
             </div>
-            <p id="gps-status" class="text-xs text-gray-400 mt-1 hidden">Obtendo localização...</p>
+            <p id="gps-status" class="text-xs text-gray-400 mt-1 hidden"></p>
             <input type="hidden" name="origin" id="origin-value">
             <input type="hidden" name="origin_coords" id="origin-coords">
         </div>
@@ -54,10 +54,26 @@
             <input type="hidden" name="destination_coords" id="destination-coords">
         </div>
 
-        {{-- Mapa de preview --}}
-        <div id="map-container" class="{{ $mapsKey ? '' : 'hidden' }}">
-            <div id="map" class="w-full h-52 rounded-xl border border-gray-200 bg-gray-100"></div>
+        {{-- Mapa --}}
+        @if($mapsKey)
+        <div>
+            {{-- Botões de modo: clique no mapa define origem ou destino --}}
+            <div class="flex gap-2 mb-2" id="map-mode-bar">
+                <button type="button" id="mode-origin-btn"
+                        class="flex-1 py-1.5 text-xs font-semibold rounded-lg border-2 border-green-500 bg-green-50 text-green-700 transition">
+                    📍 Definir Origem
+                </button>
+                <button type="button" id="mode-dest-btn"
+                        class="flex-1 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 bg-white text-gray-500 transition hover:border-red-400 hover:text-red-600">
+                    🏁 Definir Destino
+                </button>
+            </div>
+            <div id="map" class="w-full h-56 rounded-xl border border-gray-200 bg-gray-100 cursor-crosshair"></div>
+            <p class="text-xs text-gray-400 mt-1 text-center">
+                Clique no mapa ou use a busca acima para definir os pontos
+            </p>
         </div>
+        @endif
 
         {{-- Data/hora e assentos --}}
         <div class="grid sm:grid-cols-2 gap-4">
@@ -82,11 +98,12 @@
     </form>
 </div>
 
-{{-- Estilos para os web components do Maps --}}
+{{-- Fix 3: força modo claro nos web components do Maps --}}
 <style>
     gmp-place-autocomplete {
         width: 100%;
-        --gmp-place-autocomplete-background-color: #fff;
+        color-scheme: light;
+        --gmp-place-autocomplete-background-color: #ffffff;
         --gmp-place-autocomplete-border-radius: 0.5rem;
         --gmp-place-autocomplete-font-size: 0.875rem;
     }
@@ -96,23 +113,22 @@
 
 @push('scripts')
 @if($mapsKey)
-{{-- Novo padrão de carregamento recomendado pelo Google (importLibrary) --}}
+{{-- Bootstrap loader recomendado pelo Google --}}
 <script>
 (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})
 ({key: "{{ $mapsKey }}", v: "weekly"});
 
-// ── Estado ────────────────────────────────────────────────
 let map, originMarker, destinationMarker, routePolyline;
 let originPlace = null, destinationPlace = null;
 let originAC, destAC;
+let mapClickMode = "origin"; // "origin" | "destination"
 
-// ── Inicialização ─────────────────────────────────────────
 async function initMaps() {
     const { Map }                      = await google.maps.importLibrary("maps");
     const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
     const { Geocoder }                 = await google.maps.importLibrary("geocoding");
 
-    // Mapa centrado em Lavras/MG
+    // ── Mapa ─────────────────────────────────────────────
     map = new Map(document.getElementById("map"), {
         center: { lat: -21.2342, lng: -44.9998 },
         zoom: 13,
@@ -125,7 +141,6 @@ async function initMaps() {
     // ── PlaceAutocompleteElement — Origem ─────────────────
     originAC = new PlaceAutocompleteElement({ requestedRegion: "br" });
     document.getElementById("origin-ac-container").appendChild(originAC);
-
     originAC.addEventListener("gmp-select", async (e) => {
         const place = e.placePrediction.toPlace();
         await place.fetchFields(["formattedAddress", "location"]);
@@ -135,15 +150,47 @@ async function initMaps() {
     // ── PlaceAutocompleteElement — Destino ────────────────
     destAC = new PlaceAutocompleteElement({ requestedRegion: "br" });
     document.getElementById("destination-ac-container").appendChild(destAC);
-
     destAC.addEventListener("gmp-select", async (e) => {
         const place = e.placePrediction.toPlace();
         await place.fetchFields(["formattedAddress", "location"]);
         setDestination(place.formattedAddress, place.location.lat(), place.location.lng());
     });
 
+    // ── Clique no mapa (estilo Uber) ──────────────────────
+    const geocoder = new Geocoder();
+
+    map.addListener("click", async (e) => {
+        const lat = e.latLng.lat();
+        const lng = e.latLng.lng();
+        let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        try {
+            const { results } = await geocoder.geocode({ location: { lat, lng } });
+            if (results?.[0]) address = results[0].formatted_address;
+        } catch { /* usa coords brutas */ }
+
+        if (mapClickMode === "origin") {
+            setOrigin(address, lat, lng);
+            originAC.value = address;
+            setMapMode("destination"); // avança para destino automaticamente
+        } else {
+            setDestination(address, lat, lng);
+            destAC.value = address;
+        }
+    });
+
+    // ── Botões de modo ───────────────────────────────────
+    document.getElementById("mode-origin-btn").addEventListener("click", () => setMapMode("origin"));
+    document.getElementById("mode-dest-btn").addEventListener("click",   () => setMapMode("destination"));
+
     // ── Botão GPS ─────────────────────────────────────────
     document.getElementById("gps-btn").addEventListener("click", () => {
+        // Fix 2: GPS exige contexto seguro (HTTPS ou localhost)
+        if (!window.isSecureContext) {
+            document.getElementById("gps-status").textContent =
+                "GPS indisponível em HTTP. Use a busca ou clique no mapa para definir a origem.";
+            document.getElementById("gps-status").classList.remove("hidden");
+            return;
+        }
         if (!navigator.geolocation) {
             alert("Seu navegador não suporta geolocalização.");
             return;
@@ -156,22 +203,24 @@ async function initMaps() {
             async (pos) => {
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
+                let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
                 try {
-                    const geocoder = new Geocoder();
                     const { results } = await geocoder.geocode({ location: { lat, lng } });
-                    const address = results?.[0]?.formatted_address ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-                    setOrigin(address, lat, lng);
-                    originAC.value = address;
-                } catch {
-                    setOrigin(`${lat.toFixed(5)}, ${lng.toFixed(5)}`, lat, lng);
-                } finally {
-                    statusEl.classList.add("hidden");
-                }
+                    if (results?.[0]) address = results[0].formatted_address;
+                } catch { /* usa coords brutas */ }
+                setOrigin(address, lat, lng);
+                originAC.value = address;
+                statusEl.classList.add("hidden");
             },
             (err) => {
                 statusEl.classList.add("hidden");
-                const msgs = { 1: "Permissão negada.", 2: "Localização indisponível.", 3: "Tempo esgotado." };
-                alert(msgs[err.code] ?? "Erro ao obter localização.");
+                const msgs = {
+                    1: "Permissão de localização negada. Use a busca ou clique no mapa.",
+                    2: "Localização indisponível.",
+                    3: "Tempo esgotado ao obter localização.",
+                };
+                statusEl.textContent = msgs[err.code] ?? "Erro ao obter localização.";
+                statusEl.classList.remove("hidden");
             },
             { enableHighAccuracy: true, timeout: 10000 }
         );
@@ -198,9 +247,24 @@ async function initMaps() {
     window._setDestination = setDestination;
 }
 
+// ── Modo de clique no mapa ────────────────────────────────
+function setMapMode(mode) {
+    mapClickMode = mode;
+    const oBtn = document.getElementById("mode-origin-btn");
+    const dBtn = document.getElementById("mode-dest-btn");
+    if (mode === "origin") {
+        oBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg border-2 border-green-500 bg-green-50 text-green-700 transition";
+        dBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 bg-white text-gray-500 transition hover:border-red-400 hover:text-red-600";
+    } else {
+        oBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 bg-white text-gray-500 transition hover:border-green-400 hover:text-green-600";
+        dBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg border-2 border-red-500 bg-red-50 text-red-700 transition";
+    }
+}
+
+// ── Marcadores ────────────────────────────────────────────
 function placeMarker(key, position, title, color) {
-    if (key === "origin" && originMarker)     { originMarker.setMap(null); }
-    if (key === "dest"   && destinationMarker) { destinationMarker.setMap(null); }
+    if (key === "origin" && originMarker)      originMarker.setMap(null);
+    if (key === "dest"   && destinationMarker) destinationMarker.setMap(null);
 
     const marker = new google.maps.Marker({
         map, position, title,
@@ -218,6 +282,7 @@ function placeMarker(key, position, title, color) {
     else destinationMarker = marker;
 }
 
+// ── Ajuste de câmera ──────────────────────────────────────
 function fitMap() {
     if (!map) return;
     if (originPlace && destinationPlace) {
@@ -232,12 +297,12 @@ function fitMap() {
     }
 }
 
+// ── Rota ──────────────────────────────────────────────────
 async function drawRoute() {
     if (!originPlace || !destinationPlace) return;
     if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
     try {
-        const ds = new google.maps.DirectionsService();
-        const result = await ds.route({
+        const result = await new google.maps.DirectionsService().route({
             origin:      { lat: originPlace.lat, lng: originPlace.lng },
             destination: { lat: destinationPlace.lat, lng: destinationPlace.lng },
             travelMode:  google.maps.TravelMode.DRIVING,
@@ -256,11 +321,15 @@ initMaps();
 </script>
 
 @else
-{{-- Fallback sem API key: GPS simples --}}
+{{-- Fallback sem API key --}}
 <script>
 document.getElementById("gps-btn").addEventListener("click", () => {
-    if (!navigator.geolocation) { alert("Geolocalização não suportada."); return; }
     const statusEl = document.getElementById("gps-status");
+    if (!window.isSecureContext) {
+        statusEl.textContent = "GPS indisponível em HTTP. Digite o endereço manualmente.";
+        statusEl.classList.remove("hidden"); return;
+    }
+    if (!navigator.geolocation) { alert("Geolocalização não suportada."); return; }
     statusEl.textContent = "Obtendo localização...";
     statusEl.classList.remove("hidden");
     navigator.geolocation.getCurrentPosition(pos => {
@@ -268,27 +337,19 @@ document.getElementById("gps-btn").addEventListener("click", () => {
         const val = `${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
         document.getElementById("origin-value").value  = val;
         document.getElementById("origin-coords").value = val;
-        // Injeta um input visível simples caso não exista
-        const container = document.getElementById("origin-ac-container");
-        let input = container.querySelector("input");
-        if (!input) {
-            input = document.createElement("input");
-            input.className = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm";
-            container.appendChild(input);
-        }
-        input.value = val;
+        const input = document.querySelector("#origin-ac-container input");
+        if (input) input.value = val;
     }, () => { statusEl.classList.add("hidden"); alert("Não foi possível obter a localização."); });
 });
 
-// Injeta inputs simples de texto no fallback
-["origin-ac-container","destination-ac-container"].forEach((id, i) => {
-    const input = document.createElement("input");
-    input.type = "text";
-    input.placeholder = i === 0 ? "Endereço de origem" : "Endereço de destino";
-    input.className = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
-    input.addEventListener("input", () => {
-        document.getElementById(i === 0 ? "origin-value" : "destination-value").value = input.value;
+["origin-ac-container", "destination-ac-container"].forEach((id, i) => {
+    const input = Object.assign(document.createElement("input"), {
+        type: "text",
+        placeholder: i === 0 ? "Endereço de origem" : "Endereço de destino",
+        className: "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500",
     });
+    const hiddenId = i === 0 ? "origin-value" : "destination-value";
+    input.addEventListener("input", () => { document.getElementById(hiddenId).value = input.value; });
     document.getElementById(id).appendChild(input);
 });
 </script>
@@ -298,13 +359,11 @@ document.getElementById("gps-btn").addEventListener("click", () => {
 <script>
 document.getElementById("ride-form").addEventListener("submit", async function (e) {
     e.preventDefault();
-
     const alertSuccess = document.getElementById("alert-success");
     const alertError   = document.getElementById("alert-error");
     alertSuccess.classList.add("hidden");
     alertError.classList.add("hidden");
 
-    // Garante que coords tenham valor mesmo sem Maps
     if (!document.getElementById("origin-coords").value)      document.getElementById("origin-coords").value = "0,0";
     if (!document.getElementById("destination-coords").value) document.getElementById("destination-coords").value = "0,0";
 
@@ -319,15 +378,14 @@ document.getElementById("ride-form").addEventListener("submit", async function (
 
     if (!payload.origin || !payload.destination) {
         alertError.textContent = "Selecione a origem e o destino.";
-        alertError.classList.remove("hidden");
-        return;
+        alertError.classList.remove("hidden"); return;
     }
 
     const btn = document.getElementById("submit-btn");
     btn.disabled = true; btn.textContent = "Enviando...";
 
     const res = await fetch("/rides/request", {
-        method:  "POST",
+        method: "POST",
         headers: {
             "X-CSRF-TOKEN": document.querySelector("meta[name='csrf-token']").content,
             "Content-Type": "application/json",
@@ -342,13 +400,13 @@ document.getElementById("ride-form").addEventListener("submit", async function (
         alertSuccess.classList.remove("hidden");
         alertSuccess.scrollIntoView({ behavior: "smooth" });
         document.getElementById("ride-form").reset();
-        // Limpa estado do mapa
         originPlace = null; destinationPlace = null;
-        if (typeof originMarker !== "undefined" && originMarker)     originMarker.setMap(null);
+        if (typeof originMarker !== "undefined" && originMarker)      originMarker.setMap(null);
         if (typeof destinationMarker !== "undefined" && destinationMarker) destinationMarker.setMap(null);
-        if (typeof routePolyline !== "undefined" && routePolyline)   routePolyline.setMap(null);
+        if (typeof routePolyline !== "undefined" && routePolyline)    routePolyline.setMap(null);
         if (typeof originAC !== "undefined" && originAC) originAC.value = "";
         if (typeof destAC   !== "undefined" && destAC)   destAC.value   = "";
+        if (typeof setMapMode !== "undefined") setMapMode("origin");
     } else {
         const data = await res.json().catch(() => ({}));
         alertError.textContent = data.errors
