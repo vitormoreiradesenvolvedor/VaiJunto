@@ -108,10 +108,9 @@ let originAC, destAC;
 
 // ── Inicialização ─────────────────────────────────────────
 async function initMaps() {
-    const { Map }                    = await google.maps.importLibrary("maps");
+    const { Map }                      = await google.maps.importLibrary("maps");
     const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
-    const { Geocoder }               = await google.maps.importLibrary("geocoding");
-    const { Marker }                 = await google.maps.importLibrary("marker");
+    const { Geocoder }                 = await google.maps.importLibrary("geocoding");
 
     // Mapa centrado em Lavras/MG
     map = new Map(document.getElementById("map"), {
@@ -183,7 +182,7 @@ async function initMaps() {
         originPlace = { address, lat, lng };
         document.getElementById("origin-value").value  = address;
         document.getElementById("origin-coords").value = `${lat},${lng}`;
-        placeMarker("origin", { lat, lng }, "Origem", "#16a34a", Marker);
+        placeMarker("origin", { lat, lng }, "Origem", "#16a34a");
         fitMap(); drawRoute();
     }
 
@@ -191,7 +190,7 @@ async function initMaps() {
         destinationPlace = { address, lat, lng };
         document.getElementById("destination-value").value  = address;
         document.getElementById("destination-coords").value = `${lat},${lng}`;
-        placeMarker("dest", { lat, lng }, "Destino", "#dc2626", Marker);
+        placeMarker("dest", { lat, lng }, "Destino", "#dc2626");
         fitMap(); drawRoute();
     }
 
@@ -199,14 +198,21 @@ async function initMaps() {
     window._setDestination = setDestination;
 }
 
-function placeMarker(key, position, title, color, Marker) {
-    if (key === "origin"  && originMarker)      { originMarker.setMap(null); }
-    if (key === "dest"    && destinationMarker)  { destinationMarker.setMap(null); }
+function placeMarker(key, position, title, color) {
+    if (key === "origin" && originMarker)     { originMarker.setMap(null); }
+    if (key === "dest"   && destinationMarker) { destinationMarker.setMap(null); }
 
-    const pin = document.createElement("div");
-    pin.style.cssText = `width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)`;
-
-    const marker = new Marker({ map, position, title, content: pin });
+    const marker = new google.maps.Marker({
+        map, position, title,
+        icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: color,
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+        },
+    });
 
     if (key === "origin") originMarker = marker;
     else destinationMarker = marker;
