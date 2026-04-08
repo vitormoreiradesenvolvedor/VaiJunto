@@ -15,7 +15,9 @@ class RideController extends Controller
 
     public function create(): View
     {
-        return view('rides.create');
+        return view('rides.create', [
+            'mapsKey' => config('services.google.maps_key'),
+        ]);
     }
 
     public function store(Request $request): JsonResponse
