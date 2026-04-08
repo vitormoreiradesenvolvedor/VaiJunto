@@ -5,12 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Ride;
 use App\Models\RideRequest;
 use App\Services\RideService;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class RideController extends Controller
 {
     public function __construct(private RideService $rideService) {}
+
+    public function create(): View
+    {
+        return view('rides.create');
+    }
 
     public function store(Request $request): JsonResponse
     {

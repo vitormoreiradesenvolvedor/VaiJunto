@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FixedRouteController;
 use App\Http\Controllers\RideController;
 use App\Http\Controllers\VehicleController;
@@ -8,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('login'))->name('home');
-Route::get('/login', fn () => response('Login'))->name('login');
+Route::get('/login', fn () => view('auth.login'))->name('login');
 
 // OAuth Google
 Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('auth.google');
@@ -21,15 +22,17 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('login');
     })->name('logout');
 
-    Route::get('/dashboard', fn () => response()->json(['status' => 'ok']))->name('dashboard');
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     // Caronas
+    Route::get('/rides/create', [RideController::class, 'create'])->name('rides.create');
     Route::post('/rides/request', [RideController::class, 'store']);
     Route::post('/rides/{rideRequest}/accept', [RideController::class, 'accept']);
     Route::post('/rides/{rideRequest}/reject', [RideController::class, 'reject']);
     Route::post('/rides/{ride}/cancel', [RideController::class, 'cancel']);
 
     // Veículos
+    Route::get('/vehicles/{vehicle}/edit', [VehicleController::class, 'edit'])->name('vehicles.edit');
     Route::put('/vehicles/{vehicle}', [VehicleController::class, 'update']);
 
     // Rotas fixas
