@@ -78,7 +78,7 @@ it('ride create form is accessible to passengers', function () {
     $response->assertSee('Solicitar Carona');
     $response->assertSee('Origem');
     $response->assertSee('Destino');
-    $response->assertSee('Data e Hora');
+    $response->assertSee('Quando?');
 });
 
 // TC-V08: formulário de editar veículo exibe dados do veículo
