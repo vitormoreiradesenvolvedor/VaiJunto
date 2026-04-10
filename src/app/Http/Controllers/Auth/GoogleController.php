@@ -14,7 +14,7 @@ class GoogleController extends Controller
 
     private function callbackUrl(): string
     {
-        return request()->schemeAndHttpHost() . '/auth/google/callback';
+        return rtrim(config('app.url'), '/') . '/auth/google/callback';
     }
 
     public function redirect(): RedirectResponse
