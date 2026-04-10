@@ -5,8 +5,9 @@ namespace App\Services;
 use App\Models\Ride;
 use App\Models\RideRequest;
 use App\Models\User;
-use App\Events\RideCompleted;
+use App\Events\NewRideRequestForDriver;
 use App\Events\RideAccepted;
+use App\Events\RideCompleted;
 use App\Factories\RideFactory;
 use App\States\PendingState;
 use App\States\AcceptedState;
@@ -31,10 +32,13 @@ class RideService
 
         $drivers = $this->matcher->findDrivers($rideRequest);
 
+        $rideRequest->load('passenger');
+
         foreach ($drivers as $driver) {
             $this->notificationService->notify($driver, 'new_ride_request', [
                 'ride_request_id' => $rideRequest->id,
             ]);
+            NewRideRequestForDriver::dispatch($rideRequest, $driver);
         }
 
         return $rideRequest;
@@ -59,6 +63,7 @@ class RideService
     public function complete(Ride $ride): void
     {
         (new InProgressState())->complete($ride);
+        $ride->rideRequest?->update(['status' => 'completed']);
     }
 
     public function cancel(Ride $ride, string $reason): void
