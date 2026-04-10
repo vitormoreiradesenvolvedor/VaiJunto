@@ -9,6 +9,9 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
     )
+    ->withBroadcasting(
+        channels: __DIR__.'/../routes/channels.php',
+    )
     ->withMiddleware(function (Middleware $middleware) {
 $middleware->alias([
             'ufla' => \App\Http\Middleware\EnsureUflaEmail::class,
