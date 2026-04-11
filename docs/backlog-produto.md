@@ -1,6 +1,6 @@
 # Product Backlog — VaiJunto
 
-> Atualizado em: Sprint 2 (11/04/2026)
+> Atualizado em: Sprint 8 (30/05/2026)
 > Formato: `[ID] Como <perfil>, quero <ação> para <benefício>`
 
 ---
@@ -104,7 +104,6 @@
 |---|---|---|---|---|---|
 | US-20 | Como motorista, quero acumular pontos a cada carona concluída para ter acesso a benefícios | RF-20 | `prio: low` | 5 | 6 |
 | US-21 | Como motorista, quero visualizar meu saldo de pontos e histórico de conquistas | RF-21 | `prio: low` | 3 | 6 |
-| US-22 | Como usuário, quero ver um ranking de motoristas mais solidários da comunidade | RF-22 | `prio: low` | 3 | 7 |
 
 ---
 
@@ -117,15 +116,6 @@
 
 ---
 
-## Épico 8 — Administração
-
-| ID | História de Usuário | RF | Prioridade | SP | Sprint |
-|---|---|---|---|---|---|
-| US-25 | Como administrador, quero visualizar usuários cadastrados e suas avaliações para moderar a plataforma | RF-25 | `prio: low` | 5 | 7 |
-| US-26 | Como administrador, quero desativar usuários que violem as regras da comunidade | RF-26 | `prio: low` | 3 | 7 |
-
----
-
 ## Resumo por Sprint
 
 | Sprint | Itens | Story Points |
@@ -135,5 +125,4 @@
 | 4 | US-08, US-09, US-13, US-14 | 14 |
 | 5 | US-15, US-16, US-17, US-18, US-19 | 21 |
 | 6 | US-20, US-21, US-23, US-24 | 21 |
-| 7 | US-22, US-25, US-26 | 11 |
 | 8 | Consolidação e testes | — |

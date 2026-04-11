@@ -18,7 +18,7 @@ Planejar a estratégia de testes do VaiJunto e documentar os critérios de valid
 
 | Item | Responsável | Status |
 |---|---|---|
-| Definir objetivos e escopo dos testes | Rafaella (SM) | Concluído |
+| Definir objetivos e escopo dos testes | Rafaella (Dev Front) | Concluído |
 | Definir tipos de teste e ferramentas (Pest, Mockery, SQLite) | Lucas | Concluído |
 | Elaborar casos de teste — Auth (TC-01 a TC-03) | Gabriel | Concluído |
 | Elaborar casos de teste — Perfil e Veículo (TC-04 a TC-07) | Maria Luiza | Concluído |
@@ -28,12 +28,12 @@ Planejar a estratégia de testes do VaiJunto e documentar os critérios de valid
 | Elaborar casos de teste — Eventos e Listeners (TC-23 a TC-25) | Gabriel | Concluído |
 | Elaborar casos de teste — Matching (TC-26 a TC-28) | Lucas | Concluído |
 | Elaborar casos de teste — Avaliações e Pontos (TC-29 a TC-34) | Maria Luiza | Concluído |
-| Elaborar casos de teste — Segurança e Policies (TC-35 a TC-37) | Vitor (PO) | Concluído |
-| Elaborar cenários de aceitação para US-01, US-10, US-12, US-16 | Rafaella (SM) | Concluído |
-| Criar matriz de rastreabilidade RF × testes | Rafaella (SM) | Concluído |
+| Elaborar casos de teste — Segurança e Policies (TC-35 a TC-37) | Vitor (Tech Lead) | Concluído |
+| Elaborar cenários de aceitação para US-01, US-10, US-12, US-16 | Rafaella (Dev Front) | Concluído |
+| Criar matriz de rastreabilidade RF × testes | Rafaella (Dev Front) | Concluído |
 | Definir estrutura de pastas dos testes | Lucas | Concluído |
 | Definir critérios de aceitação da suíte | Equipe | Concluído |
-| Redigir `docs/sprints/sprint-07.md` | Rafaella (SM) | Concluído |
+| Redigir `docs/sprints/sprint-07.md` | Rafaella (Dev Front) | Concluído |
 
 ---
 
@@ -99,7 +99,7 @@ Os 37 casos de teste especificados nesta sprint funcionam como contrato de quali
 **O que foi concluído:**
 - 37 casos de teste especificados cobrindo todos os módulos críticos
 - Cenários BDD para 4 histórias de usuário de alta prioridade
-- Rastreabilidade para todos os 26 RFs (RF-01 a RF-21 + RNF-02, RNF-03)
+- Rastreabilidade para todos os 23 RFs (RF-01 a RF-21, RF-23, RF-24 + RNF-02, RNF-03)
 - Estrutura de pastas `tests/Unit/`, `tests/Feature/`, `tests/Integration/` definida
 - Critérios mínimos de cobertura (70% de Services e States) estabelecidos
 

@@ -18,15 +18,15 @@ Identificar, descrever, organizar e priorizar os requisitos da solução VaiJunt
 
 | Item | Responsável | Status |
 |---|---|---|
-| Levantar requisitos funcionais (RF-01 a RF-26) | Equipe | Concluído |
-| Levantar requisitos não funcionais (RNF-01 a RNF-10) | Vitor (PO) | Concluído |
-| Criar `docs/requisitos.md` com RF e RNF | Vitor (PO) | Concluído |
-| Refinar backlog com story points e rastreabilidade para RF | Rafaella (SM) | Concluído |
+| Levantar requisitos funcionais (RF-01 a RF-24) | Equipe | Concluído |
+| Levantar requisitos não funcionais (RNF-01 a RNF-10) | Vitor (Tech Lead) | Concluído |
+| Criar `docs/requisitos.md` com 23 RFs e 10 RNFs | Vitor (Tech Lead) | Concluído |
+| Refinar backlog com story points e rastreabilidade para 23 RFs | Rafaella (Dev Front) | Concluído |
 | Adicionar critérios de aceitação ao Épico 1 (US-01 a US-04) | Equipe | Concluído |
-| Definir e documentar stakeholders | Vitor (PO) | Concluído |
-| Documentar restrições do sistema | Vitor (PO) | Concluído |
-| Planejar Sprint 3 | Rafaella (SM) | Concluído |
-| Redigir `docs/sprints/sprint-02.md` | Rafaella (SM) | Concluído |
+| Definir e documentar stakeholders | Vitor (Tech Lead) | Concluído |
+| Documentar restrições do sistema | Vitor (Tech Lead) | Concluído |
+| Planejar Sprint 3 | Rafaella (Dev Front) | Concluído |
+| Redigir `docs/sprints/sprint-02.md` | Rafaella (Dev Front) | Concluído |
 
 ---
 
@@ -46,7 +46,7 @@ Esta sprint corresponde ao conteúdo de **Requisitos** da disciplina, abrangendo
 
 | Artefato | Caminho no Repositório |
 |---|---|
-| Requisitos funcionais (RF-01 a RF-26) | `docs/requisitos.md` |
+| Requisitos funcionais (RF-01 a RF-24) | `docs/requisitos.md` |
 | Requisitos não funcionais (RNF-01 a RNF-10) | `docs/requisitos.md` |
 | Stakeholders e restrições | `docs/requisitos.md` |
 | Product Backlog refinado com SP e rastreabilidade | `docs/backlog-produto.md` |
@@ -65,12 +65,12 @@ Esta sprint corresponde ao conteúdo de **Requisitos** da disciplina, abrangendo
 
 ## 7. Evolução da Aplicação Web
 
-Nesta sprint o foco foi na especificação de requisitos. A aplicação ainda não possui código implementado. Os requisitos levantados orientarão a modelagem (Sprint 3) e o início da implementação.
+Nesta sprint o foco foi na especificação de requisitos. Os requisitos levantados orientarão a modelagem (Sprint 3) e a arquitetura da solução.
 
 **Escopo definido para a aplicação web:**
-- 26 requisitos funcionais organizados em 8 módulos
+- 23 requisitos funcionais organizados em 7 módulos
 - 10 requisitos não funcionais cobrindo segurança, desempenho, usabilidade e manutenibilidade
-- 26 histórias de usuário com estimativas (story points) e rastreabilidade para os RFs
+- 23 histórias de usuário com estimativas (story points) e rastreabilidade para os RFs
 
 ---
 
@@ -85,8 +85,8 @@ Nesta sprint o foco foi na especificação de requisitos. A aplicação ainda n�
 ## 9. Revisão do Incremento
 
 **O que foi concluído:**
-- 26 RFs e 10 RNFs documentados com categorias e prioridades
-- Backlog refinado com 26 histórias de usuário, story points e rastreabilidade para os RFs
+- 23 RFs e 10 RNFs documentados com categorias e prioridades
+- Backlog refinado com 23 histórias de usuário, story points e rastreabilidade para os RFs
 - Critérios de aceitação completos para o Épico 1 (autenticação e perfil)
 - Stakeholders e restrições documentadas
 

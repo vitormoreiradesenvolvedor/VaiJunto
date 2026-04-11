@@ -18,16 +18,16 @@ Definir a arquitetura do VaiJunto, explicitando componentes, responsabilidades, 
 
 | Item | Responsável | Status |
 |---|---|---|
-| Diagrama de Contexto C4 nível 1 | Vitor (PO) | Concluído |
+| Diagrama de Contexto C4 nível 1 | Vitor (Tech Lead) | Concluído |
 | Diagrama de Contêineres C4 nível 2 (Docker Compose) | Lucas | Concluído |
 | Diagrama de Camadas (Layered Architecture) | Gabriel | Concluído |
 | Diagrama de Componentes do módulo Ride (C4 nível 3) | Maria Luiza | Concluído |
 | Fluxo de dados end-to-end (sequência com filas) | Lucas | Concluído |
 | Esquema do banco de dados (ERD) | Gabriel | Concluído |
-| Justificativas das escolhas arquiteturais | Vitor (PO) | Concluído |
-| Atributos de qualidade mapeados à arquitetura | Rafaella (SM) | Concluído |
+| Justificativas das escolhas arquiteturais | Vitor (Tech Lead) | Concluído |
+| Atributos de qualidade mapeados à arquitetura | Rafaella (Dev Front) | Concluído |
 | Atualizar `docs/arquitetura/arquitetura.md` | Equipe | Concluído |
-| Redigir `docs/sprints/sprint-06.md` | Rafaella (SM) | Concluído |
+| Redigir `docs/sprints/sprint-06.md` | Rafaella (Dev Front) | Concluído |
 
 ---
 
@@ -69,7 +69,7 @@ Esta sprint corresponde ao conteúdo de **Arquitetura de Software**, cobrindo:
 
 ## 7. Evolução da Aplicação Web
 
-A arquitetura definida nesta sprint completa a especificação técnica do VaiJunto. O sistema está totalmente modelado — do problema (Sprint 1) aos contratos de código (Sprint 5) e agora à infraestrutura completa.
+A arquitetura definida nesta sprint completa a especificação técnica do VaiJunto. O sistema está documentado do problema (Sprint 1) aos contratos de código (Sprint 5) e à infraestrutura completa.
 
 **O que a arquitetura viabiliza:**
 - **ERD completo** (10 tabelas) é a especificação das migrations Laravel

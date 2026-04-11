@@ -19,12 +19,12 @@ Definir o problema a ser tratado, estabelecer a visão inicial do produto, organ
 | Item | Responsável | Status |
 |---|---|---|
 | Definir problema e justificativa | Equipe | Concluído |
-| Elaborar visão do produto | Vitor (PO) | Concluído |
+| Elaborar visão do produto | Vitor (Tech Lead) | Concluído |
 | Criar estrutura do repositório | Vitor | Concluído |
 | Redigir README.md | Equipe | Concluído |
-| Criar docs/visao-geral.md | Vitor (PO) | Concluído |
-| Criar Product Backlog inicial | Rafaella (SM) | Concluído |
-| Planejar Sprint 2 | Rafaella (SM) | Concluído |
+| Criar docs/visao-geral.md | Vitor (Tech Lead) | Concluído |
+| Criar Product Backlog inicial | Rafaella (Dev Front) | Concluído |
+| Planejar Sprint 2 | Rafaella (Dev Front) | Concluído |
 | Redigir docs/sprints/sprint-01.md | Equipe | Concluído |
 
 ---
@@ -47,7 +47,6 @@ Esta sprint articula os conteúdos introdutórios de **Engenharia de Software** 
 | Descrição do projeto e equipe | `README.md` |
 | Visão geral do produto | `docs/visao-geral.md` |
 | Product Backlog inicial | `docs/backlog-produto.md` |
-| Contexto e referência do projeto | `PROJECT_CONTEXT.md` |
 | Estrutura mínima do repositório | Diretórios `docs/`, `src/`, `public/`, `tests/`, `rubrica/` |
 | Registro desta sprint | `docs/sprints/sprint-01.md` |
 
@@ -55,7 +54,7 @@ Esta sprint articula os conteúdos introdutórios de **Engenharia de Software** 
 
 ## 6. Evidências no GitHub
 
-- **Arquivos criados/atualizados:** README.md, docs/visao-geral.md, docs/backlog-produto.md, docs/sprints/sprint-01.md, PROJECT_CONTEXT.md
+- **Arquivos criados/atualizados:** README.md, docs/visao-geral.md, docs/backlog-produto.md, docs/sprints/sprint-01.md
 - **Commits relevantes:** _a ser preenchido após push para o GitHub_
 - **Tag da sprint:** `sprint-01`
 
@@ -80,7 +79,7 @@ Nesta sprint, o foco foi exclusivamente na organização e documentação inicia
 - Repositório criado e estruturado conforme Apêndice A do regulamento
 - Problema definido e contextualizado
 - Visão do produto documentada
-- Product Backlog inicial com 25 histórias de usuário organizadas em 8 épicos
+- Product Backlog inicial com 23 histórias de usuário organizadas em 7 épicos
 - Equipe organizada com papéis definidos (PO, Scrum Master, Desenvolvedores)
 
 **O que ficou pendente:**

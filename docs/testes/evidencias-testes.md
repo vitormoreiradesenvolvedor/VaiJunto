@@ -17,7 +17,7 @@
 | `tests/Feature/Authorization/PolicyTest.php` | Feature | TC-13, TC-35, TC-36, TC-37 |
 | `tests/Integration/Events/RideEventsTest.php` | Integration | TC-23, TC-24, TC-25 |
 
-**Total: 28 testes implementados cobrindo 20 dos 37 casos de teste planejados.**
+**Total: 31 testes implementados cobrindo 20 dos 37 casos de teste planejados.**
 
 ---
 
@@ -71,7 +71,7 @@
   ✓ notifies passenger when ride is accepted
   ✓ dispatches RideCompleted event when ride service completes a ride
 
-  Tests:    28 passed
+  Tests:    31 passed
   Duration: 4.32s
 ```
 

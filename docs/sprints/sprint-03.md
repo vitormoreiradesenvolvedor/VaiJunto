@@ -23,9 +23,9 @@ Representar a solução VaiJunto por meio de modelos UML que auxiliem a compreen
 | Elaborar diagrama de sequência — autenticação OAuth | Vitor | Concluído |
 | Elaborar diagrama de sequência — carona sob demanda | Lucas | Concluído |
 | Elaborar diagrama de atividades — inscrição em rota fixa | Maria Luiza | Concluído |
-| Vincular requisitos (RF) aos modelos produzidos | Rafaella (SM) | Concluído |
+| Vincular requisitos (RF) aos modelos produzidos | Rafaella (Dev Front) | Concluído |
 | Atualizar `docs/modelagem/modelagem.md` | Equipe | Concluído |
-| Redigir `docs/sprints/sprint-03.md` | Rafaella (SM) | Concluído |
+| Redigir `docs/sprints/sprint-03.md` | Rafaella (Dev Front) | Concluído |
 
 ---
 
@@ -64,11 +64,11 @@ Esta sprint corresponde ao conteúdo de **Modelos** da disciplina, cobrindo:
 
 ## 7. Evolução da Aplicação Web
 
-Ainda sem código implementado. A modelagem desta sprint consolida o entendimento do sistema e viabiliza as próximas etapas:
+A modelagem desta sprint consolida o entendimento do sistema e viabiliza as próximas etapas:
 
 - O diagrama de classes define as **10 entidades principais** do banco de dados
 - Os diagramas de sequência revelam as **integrações críticas**: OAuth, WebSocket e persistência
-- A rastreabilidade garante que todos os **26 RFs** têm representação nos modelos
+- A rastreabilidade garante que todos os **23 RFs** têm representação nos modelos
 
 ---
 
@@ -86,7 +86,7 @@ Ainda sem código implementado. A modelagem desta sprint consolida o entendiment
 - 5 diagramas UML/Mermaid produzidos e publicados no repositório
 - 10 classes identificadas com atributos, métodos e associações
 - 4 atores e 17 casos de uso mapeados
-- Rastreabilidade completa: todos os 26 RFs vinculados a ao menos um modelo
+- Rastreabilidade completa: todos os 23 RFs vinculados a ao menos um modelo
 - Fluxos críticos documentados em sequência (OAuth + carona sob demanda)
 
 **O que ficou pendente:**

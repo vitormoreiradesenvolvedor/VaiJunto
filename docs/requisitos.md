@@ -56,7 +56,6 @@
 |---|---|---|
 | RF-20 | O sistema deve creditar pontos ao motorista a cada carona concluída com avaliação positiva | Baixa |
 | RF-21 | O sistema deve exibir o saldo de pontos e o histórico de conquistas do motorista em seu perfil | Baixa |
-| RF-22 | O sistema deve exibir um ranking público dos motoristas com mais caronas realizadas | Baixa |
 
 ### Módulo: Mapas
 
@@ -64,13 +63,6 @@
 |---|---|---|
 | RF-23 | O sistema deve integrar o Google Maps para exibição visual de rotas (origem → destino) | Média |
 | RF-24 | O sistema deve permitir que passageiro defina ponto de embarque e desembarque via mapa interativo | Média |
-
-### Módulo: Administração
-
-| ID | Requisito | Prioridade |
-|---|---|---|
-| RF-25 | O sistema deve fornecer painel administrativo com listagem de usuários e suas avaliações | Baixa |
-| RF-26 | O sistema deve permitir que administradores desativem contas que violem as regras da comunidade | Baixa |
 
 ---
 
@@ -98,7 +90,6 @@
 | Estudante (passageiro) | Encontrar carona gratuita com facilidade e segurança |
 | Estudante (motorista) | Publicar trajetos e ser recompensado por ajudar colegas |
 | Professor / Servidor | Acesso simples e rápido ao sistema de caronas |
-| Administrador UFLA | Moderar a plataforma e garantir uso adequado |
 
 ---
 
