@@ -1,0 +1,225 @@
+databases:
+  - name: vaijunto-db
+    databaseName: vaijunto
+    user: vaijunto
+    plan: free
+
+services:
+  - type: redis
+    name: vaijunto-redis
+    plan: free
+    maxmemoryPolicy: noeviction
+
+  - type: web
+    name: vaijunto-app
+    plan: free
+    runtime: docker
+    dockerfilePath: ./docker/php/Dockerfile.prod
+    dockerContext: .
+    healthCheckPath: /
+    envVars:
+      - key: APP_NAME
+        value: VaiJunto
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        value: https://vaijunto-app.onrender.com
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: vaijunto-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: vaijunto-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: vaijunto-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: vaijunto-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: vaijunto-db
+          property: password
+      - key: REDIS_HOST
+        fromService:
+          name: vaijunto-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: vaijunto-redis
+          type: redis
+          property: port
+      - key: CACHE_DRIVER
+        value: redis
+      - key: SESSION_DRIVER
+        value: redis
+      - key: SESSION_LIFETIME
+        value: 480
+      - key: QUEUE_CONNECTION
+        value: redis
+      - key: RUN_MIGRATIONS
+        value: true
+      - key: REVERB_APP_ID
+        sync: false
+      - key: REVERB_APP_KEY
+        sync: false
+      - key: REVERB_APP_SECRET
+        sync: false
+      - key: REVERB_HOST
+        value: vaijunto-reverb.onrender.com
+      - key: REVERB_PORT
+        value: 443
+      - key: REVERB_SCHEME
+        value: https
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://vaijunto-app.onrender.com/auth/google/callback
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+
+  - type: worker
+    name: vaijunto-queue
+    plan: free
+    runtime: docker
+    dockerfilePath: ./docker/php/Dockerfile.prod
+    dockerContext: .
+    startCommand: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+    envVars:
+      - key: APP_NAME
+        value: VaiJunto
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        fromService:
+          name: vaijunto-app
+          type: web
+          envVarKey: APP_KEY
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: vaijunto-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: vaijunto-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: vaijunto-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: vaijunto-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: vaijunto-db
+          property: password
+      - key: REDIS_HOST
+        fromService:
+          name: vaijunto-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: vaijunto-redis
+          type: redis
+          property: port
+      - key: QUEUE_CONNECTION
+        value: redis
+      - key: CACHE_DRIVER
+        value: redis
+      - key: SESSION_DRIVER
+        value: redis
+      - key: RUN_MIGRATIONS
+        value: false
+
+  - type: web
+    name: vaijunto-reverb
+    plan: free
+    runtime: docker
+    dockerfilePath: ./docker/php/Dockerfile.prod
+    dockerContext: .
+    startCommand: php artisan reverb:start --host=0.0.0.0 --port=8000
+    envVars:
+      - key: APP_NAME
+        value: VaiJunto
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        fromService:
+          name: vaijunto-app
+          type: web
+          envVarKey: APP_KEY
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: vaijunto-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: vaijunto-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: vaijunto-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: vaijunto-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: vaijunto-db
+          property: password
+      - key: REDIS_HOST
+        fromService:
+          name: vaijunto-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: vaijunto-redis
+          type: redis
+          property: port
+      - key: REVERB_APP_ID
+        fromService:
+          name: vaijunto-app
+          type: web
+          envVarKey: REVERB_APP_ID
+      - key: REVERB_APP_KEY
+        fromService:
+          name: vaijunto-app
+          type: web
+          envVarKey: REVERB_APP_KEY
+      - key: REVERB_APP_SECRET
+        fromService:
+          name: vaijunto-app
+          type: web
+          envVarKey: REVERB_APP_SECRET
+      - key: RUN_MIGRATIONS
+        value: false
