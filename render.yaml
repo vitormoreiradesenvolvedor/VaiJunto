@@ -17,7 +17,6 @@ services:
     runtime: docker
     dockerfilePath: ./docker/php/Dockerfile.prod
     dockerContext: .
-    healthCheckPath: /
     envVars:
       - key: APP_NAME
         value: VaiJunto
