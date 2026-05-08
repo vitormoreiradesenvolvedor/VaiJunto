@@ -412,7 +412,7 @@ function fitMap() {
 async function drawRoute() {
     if (!originPlace || !destinationPlace) return;
     try {
-        const { DirectionsService, DirectionsRenderer } = await google.maps.importLibrary("routes");
+        const { DirectionsService, DirectionsRenderer, TravelMode } = await google.maps.importLibrary("routes");
         if (!directionsRenderer) {
             directionsRenderer = new DirectionsRenderer({
                 map,
@@ -425,7 +425,7 @@ async function drawRoute() {
         const result = await new DirectionsService().route({
             origin:      { lat: originPlace.lat, lng: originPlace.lng },
             destination: { lat: destinationPlace.lat, lng: destinationPlace.lng },
-            travelMode:  google.maps.TravelMode.DRIVING,
+            travelMode:  TravelMode.DRIVING,
         });
         directionsRenderer.setDirections(result);
     } catch {
