@@ -29,13 +29,22 @@ class RideController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'origin'              => 'required|string',
-            'destination'        => 'required|string',
+            'origin'              => 'required|string|min:3',
+            'destination'        => 'required|string|min:3',
             'origin_coords'      => 'required|string',
             'destination_coords' => 'required|string',
             'scheduled_for'      => 'required|date',
             'seats_needed'       => 'required|integer|min:1',
         ]);
+
+        foreach (['origin_coords', 'destination_coords'] as $field) {
+            [$lat, $lng] = array_pad(explode(',', $data[$field]), 2, '0');
+            if ((float) $lat === 0.0 && (float) $lng === 0.0) {
+                return response()->json([
+                    'errors' => ['origin' => ['Selecione os endereços a partir das sugestões do mapa.']],
+                ], 422);
+            }
+        }
 
         $rideRequest = $this->rideService->request($data, $request->user());
 
