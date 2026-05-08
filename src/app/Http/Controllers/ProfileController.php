@@ -6,6 +6,9 @@ use App\Models\Ride;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -42,6 +45,24 @@ class ProfileController extends Controller
             'totalAsDriver', 'totalAsPassenger', 'comments',
             'recentRatings', 'isOwnProfile'
         ));
+    }
+
+    public function updateAvatar(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,webp|max:2048',
+        ]);
+
+        $user = auth()->user();
+
+        if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $user->avatar));
+        }
+
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->update(['avatar' => '/storage/' . $path]);
+
+        return redirect()->route('profile.show')->with('success', 'Foto atualizada com sucesso!');
     }
 
     public function reputation(User $user): JsonResponse

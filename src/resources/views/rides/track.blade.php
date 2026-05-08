@@ -212,12 +212,12 @@
 ({key: "{{ $mapsKey }}", v: "weekly"});
 
 // Variáveis globais acessíveis de qualquer script
-window.trackMap       = null;
-window.carMarker      = null;
-window.trackPolyline  = null;  // rota atual
-window.trackRoutePoints = [];  // pontos para cálculo de desvio
-window.trackLastReroute = 0;
-window.trackDestCoords  = null;
+window.trackMap           = null;
+window.carMarker          = null;
+window.trackRenderer      = null;  // DirectionsRenderer da rota atual
+window.trackRoutePoints   = [];    // pontos para cálculo de desvio
+window.trackLastReroute   = 0;
+window.trackDestCoords    = null;
 
 async function initTrackMap() {
     const { Map } = await google.maps.importLibrary("maps");
@@ -282,7 +282,18 @@ async function initTrackMap() {
 }
 
 async function drawTrackRoute(from, to, color = "#2563EB") {
-    if (window.trackPolyline) { window.trackPolyline.setMap(null); window.trackPolyline = null; }
+    if (!window.trackRenderer) {
+        window.trackRenderer = new google.maps.DirectionsRenderer({
+            map: window.trackMap,
+            suppressMarkers: true,
+            preserveViewport: true,
+            polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9 },
+        });
+    } else {
+        window.trackRenderer.setOptions({
+            polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9 },
+        });
+    }
 
     try {
         const result = await new google.maps.DirectionsService().route({
@@ -290,10 +301,7 @@ async function drawTrackRoute(from, to, color = "#2563EB") {
             travelMode: google.maps.TravelMode.DRIVING,
         });
         window.trackRoutePoints = result.routes[0].overview_path;
-        window.trackPolyline = new google.maps.Polyline({
-            path: window.trackRoutePoints,
-            strokeColor: color, strokeWeight: 5, strokeOpacity: 0.85, map: window.trackMap,
-        });
+        window.trackRenderer.setDirections(result);
     } catch { /* rota indisponível */ }
 }
 

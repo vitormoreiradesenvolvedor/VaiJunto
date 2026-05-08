@@ -26,4 +26,7 @@ if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
     php artisan view:cache
 fi
 
+echo "[VaiJunto] Criando link de armazenamento público..."
+php artisan storage:link --force 2>/dev/null || true
+
 exec "$@"
