@@ -232,11 +232,11 @@ async function initDriveMap() {
         const bounds = new google.maps.LatLngBounds();
         bounds.extend(origin); bounds.extend(dest);
         driveMap.fitBounds(bounds, 64);
-        await drawRoute(origin, dest);
+        await drawRoute(origin, dest, "#2563EB", true);
     }
 }
 
-async function drawRoute(from, to, color = "#2563EB") {
+async function drawRoute(from, to, color = "#2563EB", fitRoute = false) {
     try {
         const res = await fetch(
             `/api/directions?origin=${from.lat},${from.lng}&destination=${to.lat},${to.lng}`
@@ -254,6 +254,11 @@ async function drawRoute(from, to, color = "#2563EB") {
             driveRouteLine.setPath(path);
             driveRouteLine.setOptions({ strokeColor: color });
         }
+        if (fitRoute) {
+            const bounds = new google.maps.LatLngBounds();
+            for (const pt of path) bounds.extend(pt);
+            driveMap.fitBounds(bounds, 64);
+        }
     } catch {
         if (driveRouteLine) { driveRouteLine.setMap(null); driveRouteLine = null; }
         if (driveFallbackLine) driveFallbackLine.setMap(null);
@@ -263,6 +268,11 @@ async function drawRoute(from, to, color = "#2563EB") {
             strokeColor: color, strokeWeight: 4, strokeOpacity: 0.75, geodesic: true,
             map: driveMap,
         });
+        if (fitRoute) {
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(from); bounds.extend(to);
+            driveMap.fitBounds(bounds, 64);
+        }
     }
 }
 
