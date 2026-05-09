@@ -265,14 +265,16 @@ class RideController extends Controller
         [$dLat, $dLng] = array_pad(explode(',', $destination), 2, '0');
 
         try {
-            $osrm = Http::timeout(8)->get(
+            $osrm = Http::timeout(10)->get(
                 "https://router.project-osrm.org/route/v1/driving/{$oLng},{$oLat};{$dLng},{$dLat}",
-                ['overview' => 'full', 'geometries' => 'polyline']
+                ['overview' => 'full', 'geometries' => 'polyline', 'alternatives' => 'true']
             );
             $od = $osrm->json();
             if (($od['code'] ?? '') === 'Ok' && !empty($od['routes'])) {
+                // Escolhe a rota de menor distância entre as alternativas
+                $best = collect($od['routes'])->sortBy('distance')->first();
                 return response()->json([
-                    'path' => $this->decodePolyline($od['routes'][0]['geometry']),
+                    'path' => $this->decodePolyline($best['geometry']),
                 ]);
             }
         } catch (\Throwable) { /* OSRM indisponível */ }
