@@ -214,9 +214,9 @@
 // Variáveis globais acessíveis de qualquer script
 window.trackMap           = null;
 window.carMarker          = null;
-window.trackRenderer      = null;  // DirectionsRenderer da rota atual
+window.trackRouteLine     = null;  // Polyline da rota atual
 window.trackFallbackLine  = null;  // Polyline de fallback
-window.trackRoutePoints   = [];    // pontos para cálculo de desvio
+window.trackRoutePoints   = [];    // pontos {lat,lng} para cálculo de desvio
 window.trackLastReroute   = 0;
 window.trackDestCoords    = null;
 
@@ -284,29 +284,26 @@ async function initTrackMap() {
 
 async function drawTrackRoute(from, to, color = "#2563EB") {
     try {
-        const { DirectionsService, DirectionsRenderer, TravelMode } = await google.maps.importLibrary("routes");
-        if (!window.trackRenderer) {
-            window.trackRenderer = new DirectionsRenderer({
-                map: window.trackMap,
-                suppressMarkers: true,
-                preserveViewport: true,
-                polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9 },
+        const res = await fetch(
+            `/api/directions?origin=${from.lat},${from.lng}&destination=${to.lat},${to.lng}`
+        );
+        if (!res.ok) throw new Error("directions_error");
+        const { path } = await res.json();
+        window.trackRoutePoints = path;
+        if (window.trackFallbackLine) { window.trackFallbackLine.setMap(null); window.trackFallbackLine = null; }
+        if (!window.trackRouteLine) {
+            window.trackRouteLine = new google.maps.Polyline({
+                path, strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9,
+                geodesic: false, map: window.trackMap,
             });
         } else {
-            window.trackRenderer.setOptions({
-                polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9 },
-            });
+            window.trackRouteLine.setPath(path);
+            window.trackRouteLine.setOptions({ strokeColor: color });
         }
-        const result = await new DirectionsService().route({
-            origin: from, destination: to,
-            travelMode: TravelMode.DRIVING,
-        });
-        window.trackRoutePoints = result.routes[0].overview_path;
-        window.trackRenderer.setDirections(result);
     } catch {
-        // Fallback: linha reta
-        if (window.trackRenderer) window.trackRenderer.setMap(null);
+        if (window.trackRouteLine) { window.trackRouteLine.setMap(null); window.trackRouteLine = null; }
         if (window.trackFallbackLine) window.trackFallbackLine.setMap(null);
+        window.trackRoutePoints = [];
         window.trackFallbackLine = new google.maps.Polyline({
             path: [from, to],
             strokeColor: color, strokeWeight: 4, strokeOpacity: 0.75, geodesic: true,
@@ -330,7 +327,7 @@ async function checkTrackReroute(lat, lng) {
 
     let minDist = Infinity;
     for (const pt of window.trackRoutePoints) {
-        minDist = Math.min(minDist, haversineM(lat, lng, pt.lat(), pt.lng()));
+        minDist = Math.min(minDist, haversineM(lat, lng, pt.lat, pt.lng));
     }
 
     if (minDist > 100) { // >100m fora da rota original
