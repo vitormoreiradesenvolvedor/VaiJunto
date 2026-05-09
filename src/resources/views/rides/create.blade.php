@@ -85,6 +85,7 @@
                 </button>
             </div>
             <div id="map" class="w-full h-52 rounded-xl border border-gray-300 bg-gray-100 cursor-crosshair"></div>
+            <div id="route-status" class="hidden text-xs text-center mt-1"></div>
             <p class="text-xs text-gray-400 mt-1 text-center">Clique no mapa para definir os pontos</p>
         </div>
         @endif
@@ -411,11 +412,19 @@ function fitMap() {
 
 async function drawRoute() {
     if (!originPlace || !destinationPlace) return;
+
+    const statusEl = document.getElementById("route-status");
+    statusEl.textContent = "🔄 Calculando rota...";
+    statusEl.className = "text-xs text-center mt-1 text-blue-500 animate-pulse";
+
     try {
         const res = await fetch(
             `/api/directions?origin=${originPlace.lat},${originPlace.lng}&destination=${destinationPlace.lat},${destinationPlace.lng}`
         );
-        if (!res.ok) throw new Error("directions_error");
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error ?? "directions_error");
+        }
         const { path } = await res.json();
         if (fallbackLine) { fallbackLine.setMap(null); fallbackLine = null; }
         if (!routeLine) {
@@ -426,7 +435,8 @@ async function drawRoute() {
         } else {
             routeLine.setPath(path);
         }
-    } catch {
+        statusEl.className = "hidden";
+    } catch (e) {
         if (routeLine) { routeLine.setMap(null); routeLine = null; }
         if (fallbackLine) fallbackLine.setMap(null);
         fallbackLine = new google.maps.Polyline({
@@ -437,6 +447,9 @@ async function drawRoute() {
             strokeColor: "#2563EB", strokeWeight: 4, strokeOpacity: 0.75,
             geodesic: true, map,
         });
+        const code = e.message && e.message !== "directions_error" ? ` (${e.message})` : "";
+        statusEl.textContent = `⚠️ Rota aproximada${code}`;
+        statusEl.className = "text-xs text-center mt-1 text-amber-600";
     }
 }
 

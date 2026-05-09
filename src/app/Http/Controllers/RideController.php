@@ -270,16 +270,24 @@ class RideController extends Controller
         $len    = strlen($encoded);
 
         while ($index < $len) {
-            foreach ([&$lat, &$lng] as &$coord) {
-                $shift  = 0;
-                $result = 0;
-                do {
-                    $b       = ord($encoded[$index++]) - 63;
-                    $result |= ($b & 0x1f) << $shift;
-                    $shift  += 5;
-                } while ($b >= 0x20);
-                $coord += ($result & 1) ? ~($result >> 1) : ($result >> 1);
-            }
+            // decodifica latitude
+            $shift = 0; $result = 0;
+            do {
+                $b       = ord($encoded[$index++]) - 63;
+                $result |= ($b & 0x1f) << $shift;
+                $shift  += 5;
+            } while ($b >= 0x20);
+            $lat += ($result & 1) ? ~($result >> 1) : ($result >> 1);
+
+            // decodifica longitude
+            $shift = 0; $result = 0;
+            do {
+                $b       = ord($encoded[$index++]) - 63;
+                $result |= ($b & 0x1f) << $shift;
+                $shift  += 5;
+            } while ($b >= 0x20);
+            $lng += ($result & 1) ? ~($result >> 1) : ($result >> 1);
+
             $points[] = ['lat' => $lat / 1e5, 'lng' => $lng / 1e5];
         }
 
