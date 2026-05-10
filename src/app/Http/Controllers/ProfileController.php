@@ -8,7 +8,6 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -55,14 +54,40 @@ class ProfileController extends Controller
 
         $user = auth()->user();
 
-        if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
-            Storage::disk('public')->delete(str_replace('/storage/', '', $user->avatar));
-        }
-
-        $path = $request->file('avatar')->store('avatars', 'public');
-        $user->update(['avatar' => '/storage/' . $path]);
+        $dataUri = $this->resizeAndEncodeAvatar($request->file('avatar'));
+        $user->update(['avatar' => $dataUri]);
 
         return redirect()->route('profile.show')->with('success', 'Foto atualizada com sucesso!');
+    }
+
+    private function resizeAndEncodeAvatar(\Illuminate\Http\UploadedFile $file): string
+    {
+        $maxSize = 200;
+        $mime    = $file->getMimeType();
+
+        $src = match ($mime) {
+            'image/png'  => imagecreatefrompng($file->getRealPath()),
+            'image/webp' => imagecreatefromwebp($file->getRealPath()),
+            default      => imagecreatefromjpeg($file->getRealPath()),
+        };
+
+        $origW = imagesx($src);
+        $origH = imagesy($src);
+
+        $ratio = min($maxSize / $origW, $maxSize / $origH, 1.0);
+        $newW  = (int) round($origW * $ratio);
+        $newH  = (int) round($origH * $ratio);
+
+        $dst = imagecreatetruecolor($newW, $newH);
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $origW, $origH);
+        imagedestroy($src);
+
+        ob_start();
+        imagejpeg($dst, null, 85);
+        imagedestroy($dst);
+        $binary = ob_get_clean();
+
+        return 'data:image/jpeg;base64,' . base64_encode($binary);
     }
 
     public function reputation(User $user): JsonResponse
