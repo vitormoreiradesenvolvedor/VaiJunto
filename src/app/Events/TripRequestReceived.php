@@ -6,10 +6,10 @@ use App\Models\RideRequest;
 use App\Models\Trip;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Queue\SerializesModels;
 
-class TripRequestReceived implements ShouldBroadcastNow
+class TripRequestReceived implements ShouldBroadcast
 {
     use SerializesModels;
 
