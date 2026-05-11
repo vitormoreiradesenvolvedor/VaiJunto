@@ -42,7 +42,9 @@ class TripController extends Controller
         ]);
 
         $trip->load('driver');
-        NewTripOffer::dispatch($trip);
+        try {
+            NewTripOffer::dispatch($trip);
+        } catch (\Throwable) { /* falha no broadcast não deve bloquear a criação */ }
 
         return redirect()->route('trips.show', $trip)
             ->with('success', 'Viagem publicada! Passageiros já podem solicitar vaga.');

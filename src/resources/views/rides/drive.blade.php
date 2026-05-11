@@ -45,8 +45,8 @@
 
     {{-- Mapa --}}
     @if($mapsKey)
-    <div class="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
-        <div id="drive-map" class="w-full h-64 bg-gray-100"></div>
+    <div id="drive-map-container" class="rounded-2xl overflow-hidden border border-gray-200 shadow-sm" style="transition: all 0.5s ease;">
+        <div id="drive-map" class="w-full bg-gray-100" style="height: 288px; transition: height 0.5s ease;"></div>
     </div>
     @endif
 
@@ -229,11 +229,50 @@ async function initDriveMap() {
     });
 
     if (origin && dest) {
-        const bounds = new google.maps.LatLngBounds();
-        bounds.extend(origin); bounds.extend(dest);
-        driveMap.fitBounds(bounds, 64);
         await drawRoute(origin, dest, "#2563EB", true);
     }
+
+    // Aguarda o mapa terminar de renderizar e reenquadra a rota
+    google.maps.event.addListenerOnce(driveMap, 'tilesloaded', () => fitAllRoute());
+    startAutoZoom();
+}
+
+// ── Auto-zoom: reenquadra rota + motorista a cada 10s ─────────────────────────
+let autoZoomTimer = null;
+
+function startAutoZoom() {
+    if (autoZoomTimer) return;
+    fitAllRoute();
+    autoZoomTimer = setInterval(fitAllRoute, 10000);
+}
+
+function stopAutoZoom() {
+    clearInterval(autoZoomTimer);
+    autoZoomTimer = null;
+}
+
+function fitAllRoute() {
+    if (!driveMap) return;
+    const bounds = new google.maps.LatLngBounds();
+    if (routePoints.length) {
+        for (const pt of routePoints) bounds.extend(pt);
+    } else {
+        bounds.extend(pickup);
+        bounds.extend(dropoff);
+    }
+    const pos = driverMarker?.getPosition?.();
+    if (pos) bounds.extend(pos);
+    if (!bounds.isEmpty()) driveMap.fitBounds(bounds, 64);
+}
+
+// ── Expande o mapa ao iniciar a viagem ────────────────────────────────────────
+function expandMapForRide() {
+    const mapEl = document.getElementById('drive-map');
+    if (!mapEl) return;
+    mapEl.style.height = 'calc(100vh - 220px)';
+    mapEl.style.minHeight = '400px';
+    google.maps.event.trigger(driveMap, 'resize');
+    setTimeout(fitAllRoute, 350);
 }
 
 async function drawRoute(from, to, color = "#2563EB", fitRoute = false) {
@@ -318,7 +357,6 @@ async function checkAndReroute(lat, lng) {
 function moveDriverMarker(lat, lng) {
     if (!driverMarker) return;
     driverMarker.setPosition({ lat, lng });
-    driveMap?.panTo({ lat, lng });
 }
 </script>
 @endif
@@ -422,6 +460,7 @@ document.getElementById("btn-start").addEventListener("click", async () => {
         btn.classList.add("hidden");
         document.getElementById("gps-section").classList.remove("hidden");
         updateStatusBanner("in_progress");
+        if (typeof expandMapForRide === 'function') expandMapForRide();
         startGPS("to_dest"); // fase 2: pickup → destino
     } else {
         btn.disabled = false; btn.textContent = "▶ Iniciar Viagem";
@@ -441,6 +480,7 @@ document.getElementById("btn-finish").addEventListener("click", async () => {
 
     if (res.ok) {
         stopGPS();
+        if (typeof stopAutoZoom === 'function') stopAutoZoom();
         const data = await res.json();
         document.getElementById("action-section").classList.add("hidden");
         updateStatusBanner("completed");
@@ -560,6 +600,11 @@ function setGpsStatus(text, dotClass) {
 // Inicia GPS imediatamente — transmite localização tanto em 'accepted'
 // (a caminho do passageiro) quanto em 'in_progress' (durante a corrida)
 startGPS();
+
+// Se a página carregou já em in_progress, expande o mapa imediatamente
+if (rideStatus === 'in_progress' && typeof expandMapForRide === 'function') {
+    expandMapForRide();
+}
 
 // Se ao carregar, motorista já chegou mas passageiro não embarcou: inicia polling de embarque
 if (driverArrived && !passengerBoarded && rideStatus === 'accepted') {
