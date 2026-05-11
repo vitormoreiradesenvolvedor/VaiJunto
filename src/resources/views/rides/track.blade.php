@@ -84,8 +84,8 @@
 
     {{-- Mapa --}}
     @if($mapsKey)
-    <div class="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
-        <div id="track-map" class="w-full h-56 bg-gray-100"></div>
+    <div id="track-map-container" class="rounded-2xl overflow-hidden border border-gray-200 shadow-sm" style="transition: all 0.5s ease;">
+        <div id="track-map" class="w-full bg-gray-100" style="height: 224px; transition: height 0.5s ease;"></div>
     </div>
     @endif
 
@@ -346,6 +346,40 @@ async function checkTrackReroute(lat, lng) {
     }
 }
 
+// ── Auto-zoom passageiro ──────────────────────────────────────────────────────
+let trackAutoZoomTimer = null;
+
+function fitAllTrackRoute() {
+    if (!window.trackMap) return;
+    const bounds = new google.maps.LatLngBounds();
+    if (window.trackRoutePoints.length) {
+        for (const pt of window.trackRoutePoints) bounds.extend(pt);
+    } else {
+        const o = "{{ $req->origin_coords }}".split(",").map(Number);
+        const d = "{{ $req->destination_coords ?? '' }}".split(",").map(Number);
+        if (o[0]) bounds.extend({ lat: o[0], lng: o[1] });
+        if (d[0]) bounds.extend({ lat: d[0], lng: d[1] });
+    }
+    const pos = window.carMarker?.getPosition?.();
+    if (pos) bounds.extend(pos);
+    if (!bounds.isEmpty()) window.trackMap.fitBounds(bounds, 48);
+}
+
+function startTrackAutoZoom() {
+    if (trackAutoZoomTimer) return;
+    fitAllTrackRoute();
+    trackAutoZoomTimer = setInterval(fitAllTrackRoute, 10000);
+}
+
+function expandTrackMap() {
+    const mapEl = document.getElementById('track-map');
+    if (!mapEl) return;
+    mapEl.style.height = 'calc(100vh - 200px)';
+    mapEl.style.minHeight = '350px';
+    google.maps.event.trigger(window.trackMap, 'resize');
+    setTimeout(fitAllTrackRoute, 350);
+}
+
 initTrackMap();
 </script>
 @endif
@@ -388,7 +422,6 @@ window.addEventListener('echo:DriverLocationUpdated', async (ev) => {
     const { lat, lng } = ev.detail;
     if (window.carMarker) {
         window.carMarker.setPosition({ lat, lng });
-        window.trackMap?.panTo({ lat, lng });
     }
     await checkTrackReroute(lat, lng);
 });
@@ -472,11 +505,16 @@ function applyStatus(data) {
     else                                                                                              ui = "waiting";
 
     if (ui !== currentStatus) {
+        const wasInProgress = currentStatus === 'in_progress';
         currentStatus = ui;
         updateBanner(ui);
         updateDriverCard(data.ride);
         updateCancelSection(reqStatus, rideStatus);
         if (TERMINAL.includes(ui)) clearInterval(polling);
+        if (ui === 'in_progress' && !wasInProgress) {
+            if (typeof expandTrackMap === 'function') expandTrackMap();
+            if (typeof startTrackAutoZoom === 'function') startTrackAutoZoom();
+        }
     }
 
     // Atualiza seção de embarque independente de mudança de status
@@ -620,5 +658,11 @@ document.getElementById("cancel-btn").addEventListener("click", async () => {
 
 // ── Inicia polling ───────────────────────────────────────────────────────────
 startPolling();
+
+// Se a página já carregou com in_progress, expande o mapa imediatamente
+if (currentStatus === 'in_progress') {
+    if (typeof expandTrackMap === 'function') expandTrackMap();
+    if (typeof startTrackAutoZoom === 'function') startTrackAutoZoom();
+}
 </script>
 @endpush
