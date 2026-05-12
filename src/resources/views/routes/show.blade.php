@@ -287,8 +287,9 @@ async function cancelRoute(routeId) {
         });
         if (res.ok) { window.location.href = '{{ route("dashboard") }}'; }
         else {
+            const data = await res.json().catch(() => ({}));
             if (btn) { btn.disabled = false; btn.textContent = 'Sim, encerrar'; }
-            alert('Erro ao encerrar rota.');
+            alert(data.message || 'Erro ao encerrar rota. Código: ' + res.status);
         }
     } catch {
         if (btn) { btn.disabled = false; btn.textContent = 'Sim, encerrar'; }

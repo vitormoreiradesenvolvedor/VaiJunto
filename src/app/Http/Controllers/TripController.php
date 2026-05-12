@@ -71,22 +71,26 @@ class TripController extends Controller
             return response()->json(['message' => 'Informe o motivo do cancelamento.'], 422);
         }
 
-        // Cancel accepted rides first so passengers are notified via Echo
-        foreach ($trip->requests()->where('status', 'accepted')->with('ride')->get() as $req) {
-            if (!$req->ride || !in_array($req->ride->status, ['pending', 'accepted', 'in_progress'])) {
-                continue;
+        try {
+            foreach ($trip->requests()->where('status', 'accepted')->with('ride')->get() as $req) {
+                if (!$req->ride || !in_array($req->ride->status, ['pending', 'accepted', 'in_progress'])) {
+                    continue;
+                }
+                try {
+                    $this->rideService->cancel($req->ride, $reason);
+                    try { RideCancelledByDriver::dispatch($req->ride); } catch (\Throwable) {}
+                } catch (\Throwable) {
+                    try { $req->ride->update(['status' => 'cancelled', 'cancel_reason' => $reason]); } catch (\Throwable) {}
+                    try { $req->update(['status' => 'cancelled']); } catch (\Throwable) {}
+                }
             }
-            try {
-                $this->rideService->cancel($req->ride, $reason);
-                try { RideCancelledByDriver::dispatch($req->ride); } catch (\Throwable) {}
-            } catch (\Throwable) {
-                try { $req->ride->update(['status' => 'cancelled', 'cancel_reason' => $reason]); } catch (\Throwable) {}
-                $req->update(['status' => 'cancelled']);
-            }
-        }
 
-        $trip->update(['status' => 'cancelled']);
-        $trip->requests()->whereIn('status', ['pending', 'accepted'])->update(['status' => 'cancelled']);
+            $trip->update(['status' => 'cancelled']);
+            $trip->requests()->whereIn('status', ['pending', 'accepted'])->update(['status' => 'cancelled']);
+        } catch (\Throwable $e) {
+            \Log::error('TripController::cancel error: ' . $e->getMessage());
+            return response()->json(['message' => 'Erro ao cancelar: ' . $e->getMessage()], 500);
+        }
 
         return response()->json(['message' => 'Viagem cancelada.']);
     }

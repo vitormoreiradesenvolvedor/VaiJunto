@@ -512,14 +512,10 @@ $statusLabel = [
                         </p>
                     </div>
                     <div class="flex flex-col items-end gap-1 flex-shrink-0">
-                        @if($within24h)
-                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500 text-white">⚡ Iniciar</span>
-                        @else
                         <span class="text-xs font-semibold px-2 py-0.5 rounded-full
                             {{ $trip->status === 'open' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700' }}">
                             {{ $trip->status === 'open' ? 'Aberta' : 'Lotada' }}
                         </span>
-                        @endif
                     </div>
                 </a>
                 @endforeach

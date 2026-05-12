@@ -15,7 +15,7 @@
         'departed'  => ['label' => 'Partiu',    'bg' => 'bg-blue-100',   'text' => 'text-blue-700'],
         'cancelled' => ['label' => 'Cancelada', 'bg' => 'bg-gray-100',   'text' => 'text-gray-600'],
     ];
-    $sc = $statusConfig[$trip->status];
+    $sc = $statusConfig[$trip->status] ?? $statusConfig['open'];
 @endphp
 
 <div class="max-w-xl mx-auto space-y-4">
@@ -331,7 +331,11 @@ document.getElementById("cancel-yes").addEventListener("click", async () => {
         body: JSON.stringify({ cancel_reason: reason }),
     });
     if (res.ok) { window.location.href = "{{ route('dashboard') }}"; }
-    else { btn.disabled = false; btn.textContent = "Sim, cancelar"; alert("Erro ao cancelar."); }
+    else {
+        const data = await res.json().catch(() => ({}));
+        btn.disabled = false; btn.textContent = "Sim, cancelar";
+        alert(data.message || "Erro ao cancelar. Código: " + res.status);
+    }
 });
 @endif
 </script>
