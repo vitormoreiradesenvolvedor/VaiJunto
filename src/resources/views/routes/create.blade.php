@@ -184,7 +184,7 @@ async function initMap() {
         center: { lat: -21.2342, lng: -44.9998 },
         zoom: 13,
         mapTypeControl: false, streetViewControl: false,
-        fullscreenControl: false, zoomControl: false,
+        fullscreenControl: false, rotateControl: false, zoomControl: false,
         gestureHandling: "cooperative",
     });
 
