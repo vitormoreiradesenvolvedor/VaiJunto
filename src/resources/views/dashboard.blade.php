@@ -138,7 +138,7 @@ $statusLabel = [
                             </span>
                         </p>
                     </div>
-                    <button onclick="joinRoute({{ $fr->id }})"
+                    <button onclick="joinRoute({{ $fr->id }}, this)"
                             {{ $seatsLeft <= 0 ? 'disabled' : '' }}
                             class="flex-shrink-0 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
                         Solicitar
@@ -188,7 +188,7 @@ $statusLabel = [
                             </span>
                         </p>
                     </div>
-                    <button onclick="joinTrip({{ $trip->id }})"
+                    <button onclick="joinTrip({{ $trip->id }}, this)"
                             {{ $seatsLeft <= 0 ? 'disabled' : '' }}
                             class="flex-shrink-0 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
                         Entrar
@@ -592,11 +592,11 @@ $statusLabel = [
                     @endif
                 </button>
                 <div class="flex gap-2">
-                    <button onclick="acceptRide({{ $req->id }})"
+                    <button onclick="acceptRide({{ $req->id }}, this)"
                             class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-2 rounded-lg transition">
                         Aceitar
                     </button>
-                    <button onclick="rejectRide({{ $req->id }})"
+                    <button onclick="rejectRide({{ $req->id }}, this)"
                             class="flex-1 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium py-2 rounded-lg transition">
                         Recusar
                     </button>
@@ -929,52 +929,82 @@ const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 let cancelRideId = null;
 
 // ── Passageiro: entrar em viagem avulsa ───────────────────────────────────────
-async function joinTrip(tripId) {
-    const res = await fetch(`/trips/${tripId}/join`, {
-        method: 'POST',
-        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-    });
-    const data = await res.json();
-    if (res.ok) { window.location.href = data.track_url; }
-    else { alert(data.message ?? 'Erro ao solicitar vaga.'); }
-}
-
-// ── Passageiro: solicitar vaga em rota fixa ───────────────────────────────────
-async function joinRoute(routeId) {
-    const res = await fetch(`/routes/${routeId}/join`, {
-        method: 'POST',
-        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-    });
-    const data = await res.json();
-    if (res.ok) { window.location.href = data.track_url; }
-    else { alert(data.message ?? 'Erro ao solicitar vaga.'); }
-}
-
-// ── Motorista: solicitações avulsas ───────────────────────────────────────────
-async function acceptRide(id) {
-    const res = await fetch(`/rides/${id}/accept`, {
-        method: 'POST',
-        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-    });
-    if (res.ok) {
+async function joinTrip(tripId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Aguarde...'; }
+    try {
+        const res = await fetch(`/trips/${tripId}/join`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+        });
         const data = await res.json();
-        window.location.href = data.drive_url ?? '/dashboard';
-    } else {
-        const d = await res.json();
-        alert(d.message ?? 'Erro ao aceitar.');
+        if (res.ok) { window.location.href = data.track_url; }
+        else {
+            if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+            alert(data.message ?? 'Erro ao solicitar vaga.');
+        }
+    } catch {
+        if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
     }
 }
 
-async function rejectRide(id) {
-    const res = await fetch(`/rides/${id}/reject`, {
-        method: 'POST',
-        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-    });
-    if (res.ok) {
-        document.getElementById(`req-${id}`)?.remove();
-        knownRequestIds.delete(id);
-        decrementRequestBadge();
-    } else { alert('Erro ao recusar.'); }
+// ── Passageiro: solicitar vaga em rota fixa ───────────────────────────────────
+async function joinRoute(routeId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Aguarde...'; }
+    try {
+        const res = await fetch(`/routes/${routeId}/join`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+        });
+        const data = await res.json();
+        if (res.ok) { window.location.href = data.track_url; }
+        else {
+            if (btn) { btn.disabled = false; btn.textContent = 'Solicitar'; }
+            alert(data.message ?? 'Erro ao solicitar vaga.');
+        }
+    } catch {
+        if (btn) { btn.disabled = false; btn.textContent = 'Solicitar'; }
+    }
+}
+
+// ── Motorista: solicitações avulsas ───────────────────────────────────────────
+async function acceptRide(id, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Aceitando...'; }
+    try {
+        const res = await fetch(`/rides/${id}/accept`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+        });
+        if (res.ok) {
+            const data = await res.json();
+            window.location.href = data.drive_url ?? '/dashboard';
+        } else {
+            const d = await res.json();
+            if (btn) { btn.disabled = false; btn.textContent = 'Aceitar'; }
+            alert(d.message ?? 'Erro ao aceitar.');
+        }
+    } catch {
+        if (btn) { btn.disabled = false; btn.textContent = 'Aceitar'; }
+    }
+}
+
+async function rejectRide(id, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Recusando...'; }
+    try {
+        const res = await fetch(`/rides/${id}/reject`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+        });
+        if (res.ok) {
+            document.getElementById(`req-${id}`)?.remove();
+            knownRequestIds.delete(id);
+            decrementRequestBadge();
+        } else {
+            if (btn) { btn.disabled = false; btn.textContent = 'Recusar'; }
+            alert('Erro ao recusar.');
+        }
+    } catch {
+        if (btn) { btn.disabled = false; btn.textContent = 'Recusar'; }
+    }
 }
 
 // ── Cancelar carona ativa ─────────────────────────────────────────────────────
@@ -987,14 +1017,23 @@ function cancelRide(id) {
 async function confirmCancel() {
     const reason = document.getElementById('cancel-reason').value.trim();
     if (!reason) { alert('Informe o motivo.'); return; }
-    const res = await fetch(`/rides/${cancelRideId}/cancel`, {
-        method: 'POST',
-        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason }),
-    });
-    document.getElementById('cancel-modal').classList.add('hidden');
-    if (res.ok) { location.reload(); }
-    else { alert('Erro ao cancelar carona.'); }
+    const btn = document.querySelector('#cancel-modal button[onclick="confirmCancel()"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Cancelando...'; }
+    try {
+        const res = await fetch(`/rides/${cancelRideId}/cancel`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason }),
+        });
+        document.getElementById('cancel-modal').classList.add('hidden');
+        if (res.ok) { location.reload(); }
+        else {
+            if (btn) { btn.disabled = false; btn.textContent = 'Confirmar'; }
+            alert('Erro ao cancelar carona.');
+        }
+    } catch {
+        if (btn) { btn.disabled = false; btn.textContent = 'Confirmar'; }
+    }
 }
 
 // ── Helpers de reputação ────────────────────────────────────────────────────
@@ -1019,9 +1058,9 @@ function buildRequestCard(e) {
             ${e.passenger.name} &nbsp;${renderStars(e.passenger.avg_stars, e.passenger.total_ratings)}
         </button>
         <div class="flex gap-2">
-            <button onclick="acceptRide(${e.id})"
+            <button onclick="acceptRide(${e.id}, this)"
                     class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-2 rounded-lg transition">Aceitar</button>
-            <button onclick="rejectRide(${e.id})"
+            <button onclick="rejectRide(${e.id}, this)"
                     class="flex-1 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium py-2 rounded-lg transition">Recusar</button>
         </div>`;
     return el;
@@ -1159,7 +1198,7 @@ window.addEventListener('echo:NewTripOffer', (ev) => {
                         &nbsp;·&nbsp; <span class="text-green-600 font-medium">${e.seats_total} vaga(s)</span>
                     </p>
                 </div>
-                <button onclick="joinTrip(${e.id})"
+                <button onclick="joinTrip(${e.id}, this)"
                         class="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
                     Entrar
                 </button>

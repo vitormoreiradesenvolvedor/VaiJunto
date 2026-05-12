@@ -237,13 +237,13 @@ async function initDriveMap() {
     startAutoZoom();
 }
 
-// ── Auto-zoom: reenquadra rota + motorista a cada 10s ─────────────────────────
+// ── Auto-zoom: reenquadra rota + motorista a cada 5s ──────────────────────────
 let autoZoomTimer = null;
 
 function startAutoZoom() {
     if (autoZoomTimer) return;
     fitAllRoute();
-    autoZoomTimer = setInterval(fitAllRoute, 10000);
+    autoZoomTimer = setInterval(fitAllRoute, 5000);
 }
 
 function stopAutoZoom() {
@@ -262,7 +262,7 @@ function fitAllRoute() {
     }
     const pos = driverMarker?.getPosition?.();
     if (pos) bounds.extend(pos);
-    if (!bounds.isEmpty()) driveMap.fitBounds(bounds, 64);
+    if (!bounds.isEmpty()) driveMap.fitBounds(bounds, 48);
 }
 
 // ── Expande o mapa ao iniciar a viagem ────────────────────────────────────────
@@ -296,7 +296,7 @@ async function drawRoute(from, to, color = "#2563EB", fitRoute = false) {
         if (fitRoute) {
             const bounds = new google.maps.LatLngBounds();
             for (const pt of path) bounds.extend(pt);
-            driveMap.fitBounds(bounds, 64);
+            driveMap.fitBounds(bounds, 48);
         }
     } catch {
         if (driveRouteLine) { driveRouteLine.setMap(null); driveRouteLine = null; }
@@ -310,7 +310,7 @@ async function drawRoute(from, to, color = "#2563EB", fitRoute = false) {
         if (fitRoute) {
             const bounds = new google.maps.LatLngBounds();
             bounds.extend(from); bounds.extend(to);
-            driveMap.fitBounds(bounds, 64);
+            driveMap.fitBounds(bounds, 48);
         }
     }
 }

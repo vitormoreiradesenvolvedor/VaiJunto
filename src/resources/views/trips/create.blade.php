@@ -276,9 +276,16 @@ async function drawRoute() {
     if (!originPlace || !destinationPlace) return;
     if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
     try {
-        const result = await new google.maps.DirectionsService().route({ origin: { lat: originPlace.lat, lng: originPlace.lng }, destination: { lat: destinationPlace.lat, lng: destinationPlace.lng }, travelMode: google.maps.TravelMode.DRIVING });
-        routePolyline = new google.maps.Polyline({ path: result.routes[0].overview_path, strokeColor: "#2563EB", strokeWeight: 4, strokeOpacity: 0.8, map });
-    } catch {}
+        const res = await fetch(`/api/directions?origin=${originPlace.lat},${originPlace.lng}&destination=${destinationPlace.lat},${destinationPlace.lng}`);
+        if (!res.ok) throw new Error();
+        const { path } = await res.json();
+        routePolyline = new google.maps.Polyline({ path, strokeColor: "#2563EB", strokeWeight: 4, strokeOpacity: 0.85, map });
+    } catch {
+        routePolyline = new google.maps.Polyline({
+            path: [{ lat: originPlace.lat, lng: originPlace.lng }, { lat: destinationPlace.lat, lng: destinationPlace.lng }],
+            strokeColor: "#2563EB", strokeWeight: 3, strokeOpacity: 0.6, geodesic: true, map,
+        });
+    }
 }
 initMaps();
 </script>

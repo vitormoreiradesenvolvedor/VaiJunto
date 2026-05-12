@@ -55,7 +55,7 @@ class TripController extends Controller
         abort_if($trip->driver_id !== auth()->id(), 403);
 
         return view('trips.show', [
-            'trip'    => $trip->load(['requests.passenger', 'vehicle']),
+            'trip'    => $trip->load(['requests.passenger', 'requests.ride', 'vehicle']),
             'mapsKey' => config('services.google.maps_key'),
         ]);
     }
@@ -95,7 +95,9 @@ class TripController extends Controller
         ]);
 
         $rideRequest->load('passenger');
-        TripRequestReceived::dispatch($trip, $rideRequest);
+        try {
+            TripRequestReceived::dispatch($trip, $rideRequest);
+        } catch (\Throwable) { /* broadcast failure não bloqueia o fluxo */ }
 
         return response()->json([
             'message'   => 'Solicitação enviada!',
