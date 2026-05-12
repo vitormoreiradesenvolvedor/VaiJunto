@@ -49,6 +49,9 @@
                        placeholder="Ex.: UFLA — Universidade Federal de Lavras"
                        required
                        class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10">
+                <button type="button" id="clear-origin"
+                        onclick="clearRouteField('origin')"
+                        class="{{ old('origin') ? '' : 'hidden' }} absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base leading-none">✕</button>
                 <input type="hidden" name="origin_coords" id="origin_coords" value="{{ old('origin_coords') }}">
             </div>
             @error('origin')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
@@ -62,7 +65,10 @@
                        value="{{ old('destination') }}"
                        placeholder="Ex.: Centro de Lavras"
                        required
-                       class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                       class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10">
+                <button type="button" id="clear-dest"
+                        onclick="clearRouteField('dest')"
+                        class="{{ old('destination') ? '' : 'hidden' }} absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base leading-none">✕</button>
                 <input type="hidden" name="destination_coords" id="destination_coords" value="{{ old('destination_coords') }}">
             </div>
             @error('destination')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
@@ -147,6 +153,29 @@
 
 let map, originMarker, destMarker, routePoly;
 
+function clearRouteField(type) {
+    if (type === 'origin') {
+        document.getElementById('origin-input').value = '';
+        document.getElementById('origin_coords').value = '';
+        document.getElementById('clear-origin').classList.add('hidden');
+        if (originMarker) { originMarker.setMap(null); originMarker = null; }
+    } else {
+        document.getElementById('dest-input').value = '';
+        document.getElementById('destination_coords').value = '';
+        document.getElementById('clear-dest').classList.add('hidden');
+        if (destMarker) { destMarker.setMap(null); destMarker = null; }
+    }
+    if (routePoly) { routePoly.setMap(null); routePoly = null; }
+}
+
+// Mostrar/ocultar botão ✕ conforme digitação
+document.getElementById('origin-input').addEventListener('input', () => {
+    document.getElementById('clear-origin').classList.toggle('hidden', !document.getElementById('origin-input').value);
+});
+document.getElementById('dest-input').addEventListener('input', () => {
+    document.getElementById('clear-dest').classList.toggle('hidden', !document.getElementById('dest-input').value);
+});
+
 async function initMap() {
     const { Map } = await google.maps.importLibrary("maps");
     const { Autocomplete } = await google.maps.importLibrary("places");
@@ -162,6 +191,13 @@ async function initMap() {
     function makeMarker(color) {
         return { path: google.maps.SymbolPath.CIRCLE, scale: 9,
                  fillColor: color, fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 };
+    }
+
+    function fitBothMarkers() {
+        if (!originMarker || !destMarker) return;
+        const b = new google.maps.LatLngBounds();
+        b.extend(originMarker.getPosition()); b.extend(destMarker.getPosition());
+        map.fitBounds(b, 36);
     }
 
     async function drawRoute() {
@@ -180,12 +216,9 @@ async function initMap() {
                 strokeColor: "#2563EB", strokeWeight: 3, strokeOpacity: 0.6, geodesic: true, map,
             });
         }
-        const b = new google.maps.LatLngBounds();
-        b.extend(oPos); b.extend(dPos);
-        map.fitBounds(b, 36);
     }
 
-    function setupAutocomplete(inputId, coordsId, markerColor, onSet) {
+    function setupAutocomplete(inputId, coordsId, clearBtnId, onSet) {
         const input = document.getElementById(inputId);
         const ac = new Autocomplete(input, { fields: ["formatted_address","geometry"], types: ["geocode","establishment"] });
         ac.addListener("place_changed", () => {
@@ -194,20 +227,22 @@ async function initMap() {
             const loc = place.geometry.location;
             document.getElementById(coordsId).value = `${loc.lat()},${loc.lng()}`;
             input.value = place.formatted_address;
+            document.getElementById(clearBtnId).classList.remove('hidden');
             onSet({ lat: loc.lat(), lng: loc.lng() });
         });
     }
 
-    setupAutocomplete("origin-input", "origin_coords", "#16a34a", (pos) => {
+    setupAutocomplete("origin-input", "origin_coords", "clear-origin", (pos) => {
         if (originMarker) originMarker.setMap(null);
         originMarker = new google.maps.Marker({ map, position: pos, icon: makeMarker("#16a34a") });
-        map.panTo(pos);
+        if (destMarker) { fitBothMarkers(); } else { map.panTo(pos); map.setZoom(15); }
         drawRoute();
     });
 
-    setupAutocomplete("dest-input", "destination_coords", "#dc2626", (pos) => {
+    setupAutocomplete("dest-input", "destination_coords", "clear-dest", (pos) => {
         if (destMarker) destMarker.setMap(null);
         destMarker = new google.maps.Marker({ map, position: pos, icon: makeMarker("#dc2626") });
+        if (originMarker) { fitBothMarkers(); } else { map.panTo(pos); map.setZoom(15); }
         drawRoute();
     });
 }
