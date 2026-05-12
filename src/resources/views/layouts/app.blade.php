@@ -260,6 +260,10 @@
             .listen('.RideCancelledByPassenger', (e) => {
                 showToast('❌ O passageiro cancelou a carona.', 'error');
                 dispatchEchoEvent('RideCancelledByPassenger', e);
+            })
+            .listen('.FixedRoutePaused', (e) => {
+                showToast(`⏸ Rota pausada: ${e.origin} → ${e.destination}`, 'warning');
+                dispatchEchoEvent('FixedRoutePaused', e);
             });
 
         // Canal público de novas viagens avulsas

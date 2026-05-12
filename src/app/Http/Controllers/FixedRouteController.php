@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\FixedRoutePaused;
 use App\Events\NewFixedRouteOffer;
 use App\Events\NewRideRequestForDriver;
 use App\Events\RideCancelledByDriver;
@@ -78,6 +79,19 @@ class FixedRouteController extends Controller
 
         $newStatus = $fixedRoute->status === 'active' ? 'paused' : 'active';
         $fixedRoute->update(['status' => $newStatus]);
+
+        if ($newStatus === 'paused') {
+            $passengers = $fixedRoute->requests()
+                ->where('status', 'accepted')
+                ->with('passenger')
+                ->get()
+                ->pluck('passenger')
+                ->filter();
+
+            foreach ($passengers as $passenger) {
+                try { FixedRoutePaused::dispatch($fixedRoute, $passenger); } catch (\Throwable) {}
+            }
+        }
 
         return response()->json(['status' => $newStatus]);
     }

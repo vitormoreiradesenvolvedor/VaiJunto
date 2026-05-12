@@ -197,7 +197,7 @@ async function initMap() {
         if (!originMarker || !destMarker) return;
         const b = new google.maps.LatLngBounds();
         b.extend(originMarker.getPosition()); b.extend(destMarker.getPosition());
-        map.fitBounds(b, 36);
+        map.fitBounds(b, 60);
     }
 
     async function drawRoute() {
@@ -216,6 +216,7 @@ async function initMap() {
                 strokeColor: "#2563EB", strokeWeight: 3, strokeOpacity: 0.6, geodesic: true, map,
             });
         }
+        fitBothMarkers();
     }
 
     function setupAutocomplete(inputId, coordsId, clearBtnId, onSet) {
@@ -235,15 +236,13 @@ async function initMap() {
     setupAutocomplete("origin-input", "origin_coords", "clear-origin", (pos) => {
         if (originMarker) originMarker.setMap(null);
         originMarker = new google.maps.Marker({ map, position: pos, icon: makeMarker("#16a34a") });
-        if (destMarker) { fitBothMarkers(); } else { map.panTo(pos); map.setZoom(15); }
-        drawRoute();
+        if (destMarker) { drawRoute(); } else { map.panTo(pos); map.setZoom(15); }
     });
 
     setupAutocomplete("dest-input", "destination_coords", "clear-dest", (pos) => {
         if (destMarker) destMarker.setMap(null);
         destMarker = new google.maps.Marker({ map, position: pos, icon: makeMarker("#dc2626") });
-        if (originMarker) { fitBothMarkers(); } else { map.panTo(pos); map.setZoom(15); }
-        drawRoute();
+        if (originMarker) { drawRoute(); } else { map.panTo(pos); map.setZoom(15); }
     });
 }
 
