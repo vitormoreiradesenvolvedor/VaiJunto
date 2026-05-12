@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\NewFixedRouteOffer;
 use App\Events\NewRideRequestForDriver;
+use App\Events\RideCancelledByDriver;
 use App\Models\FixedRoute;
 use App\Models\RideRequest;
 use App\Services\NotificationService;
@@ -149,16 +150,21 @@ class FixedRouteController extends Controller
     {
         abort_if($fixedRoute->driver_id !== auth()->id(), 403);
 
-        $reason = $request->validate(['cancel_reason' => 'required|string|min:3'])['cancel_reason'];
+        $reason = trim((string) $request->input('cancel_reason', ''));
+        if (!$reason) {
+            return response()->json(['message' => 'Informe o motivo do encerramento.'], 422);
+        }
 
         foreach ($fixedRoute->requests()->where('status', 'accepted')->with('ride')->get() as $req) {
-            if ($req->ride && in_array($req->ride->status, ['pending', 'accepted', 'in_progress'])) {
-                try {
-                    $this->rideService->cancel($req->ride, $reason);
-                } catch (\Throwable) {
-                    $req->ride->update(['status' => 'cancelled', 'cancel_reason' => $reason]);
-                    $req->update(['status' => 'cancelled']);
-                }
+            if (!$req->ride || !in_array($req->ride->status, ['pending', 'accepted', 'in_progress'])) {
+                continue;
+            }
+            try {
+                $this->rideService->cancel($req->ride, $reason);
+                try { RideCancelledByDriver::dispatch($req->ride); } catch (\Throwable) {}
+            } catch (\Throwable) {
+                try { $req->ride->update(['status' => 'cancelled', 'cancel_reason' => $reason]); } catch (\Throwable) {}
+                $req->update(['status' => 'cancelled']);
             }
         }
 

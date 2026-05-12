@@ -255,7 +255,7 @@ async function initTrackMap() {
     window.trackMap = new Map(document.getElementById("track-map"), {
         center, zoom: 13,
         mapTypeControl: false, streetViewControl: false, rotateControl: false,
-        fullscreenControl: true, zoomControl: false,
+        fullscreenControl: false, zoomControl: false,
         gestureHandling: "cooperative",
     });
 
