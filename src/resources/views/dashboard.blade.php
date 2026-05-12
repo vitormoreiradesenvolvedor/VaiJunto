@@ -169,8 +169,8 @@ $statusLabel = [
             Viagens avulsas (próximas)
         </h3>
 
-        @if(isset($availableTrips) && $availableTrips->isNotEmpty())
         <div class="space-y-3 mb-2" id="trips-list">
+        @if(isset($availableTrips) && $availableTrips->isNotEmpty())
             @foreach($availableTrips as $trip)
             @php
                 $seatsLeft  = $trip->seats_total - $trip->accepted_count;
@@ -216,12 +216,12 @@ $statusLabel = [
                 </div>
             </div>
             @endforeach
-        </div>
         @else
-        <div class="bg-white rounded-xl border border-gray-200 p-6 text-center text-gray-400 text-sm mb-2" id="trips-empty">
+        <div class="bg-white rounded-xl border border-gray-200 p-6 text-center text-gray-400 text-sm" id="trips-empty">
             Nenhuma viagem avulsa disponível no momento.
         </div>
         @endif
+        </div>
 
     </div>{{-- /panel-offers --}}
 
@@ -456,7 +456,8 @@ $statusLabel = [
                 <div class="space-y-2">
                 @foreach($myFixedRoutes as $fr)
                 <a href="{{ route('routes.show', $fr) }}"
-                   class="flex items-center gap-3 bg-white rounded-xl border border-gray-200 px-4 py-3 shadow-sm hover:border-blue-300 transition">
+                   class="flex items-center gap-3 bg-white rounded-xl border border-gray-200 px-4 py-3 shadow-sm hover:border-blue-300 transition"
+                   data-fr-id="{{ $fr->id }}">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-semibold text-gray-900 truncate">
                             {{ $fr->origin }}
@@ -472,9 +473,10 @@ $statusLabel = [
                         <span class="text-xs font-semibold px-2 py-0.5 rounded-full {{ $fr->status === 'active' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-600' }}">
                             {{ $fr->status === 'active' ? 'Ativa' : 'Pausada' }}
                         </span>
-                        @if($fr->pending_count > 0)
-                        <span class="text-xs text-blue-700 font-medium">{{ $fr->pending_count }} pendente{{ $fr->pending_count > 1 ? 's' : '' }}</span>
-                        @endif
+                        <span class="fr-pending-badge text-xs text-blue-700 font-medium {{ $fr->pending_count === 0 ? 'hidden' : '' }}"
+                              data-count="{{ $fr->pending_count }}">
+                            {{ $fr->pending_count }} pendente{{ $fr->pending_count > 1 ? 's' : '' }}
+                        </span>
                     </div>
                 </a>
                 @endforeach
@@ -1092,13 +1094,27 @@ function buildRequestCard(e) {
 
 // ── Listeners em tempo real ────────────────────────────────────────────────
 window.addEventListener('echo:NewRideRequestForDriver', (ev) => {
+    const e = ev.detail;
+
+    if (e.fixed_route_id) {
+        const link = document.querySelector(`[data-fr-id="${e.fixed_route_id}"]`);
+        if (link) {
+            const badge = link.querySelector('.fr-pending-badge');
+            if (badge) {
+                const newCount = (parseInt(badge.dataset.count) || 0) + 1;
+                badge.dataset.count = newCount;
+                badge.textContent = `${newCount} pendente${newCount !== 1 ? 's' : ''}`;
+                badge.classList.remove('hidden');
+            }
+        }
+        return;
+    }
+
     const list = document.getElementById('pending-list');
     if (!list) return;
     document.getElementById('pending-empty')?.remove();
-    list.prepend(buildRequestCard(ev.detail));
-    // Muda para aba Pedidos automaticamente
+    list.prepend(buildRequestCard(e));
     showDriverTab('requests');
-    // Atualiza badge
     incrementRequestBadge();
 });
 
@@ -1147,6 +1163,19 @@ async function pollPendingRequests() {
                     empty.textContent = 'Nenhuma solicitação avulsa no momento.';
                     list.appendChild(empty);
                 }
+            }
+        }
+
+        // Atualiza badges de rotas fixas
+        if (data.fixed_route_pending) {
+            for (const [routeId, count] of Object.entries(data.fixed_route_pending)) {
+                const link = document.querySelector(`[data-fr-id="${routeId}"]`);
+                if (!link) continue;
+                const badge = link.querySelector('.fr-pending-badge');
+                if (!badge) continue;
+                badge.dataset.count = count;
+                badge.textContent = count > 0 ? `${count} pendente${count !== 1 ? 's' : ''}` : '';
+                badge.classList.toggle('hidden', count <= 0);
             }
         }
     } catch (err) { console.error('[poll] erro:', err); }
@@ -1373,7 +1402,7 @@ if (document.querySelector('[data-passenger-dashboard]')) {
     }
 
     pollAvailableOffers(); // chamada imediata ao carregar a página
-    setInterval(pollAvailableOffers, 20000);
+    setInterval(pollAvailableOffers, 5000);
 }
 
 // ── Tabs passageiro ─────────────────────────────────────────────────────────
