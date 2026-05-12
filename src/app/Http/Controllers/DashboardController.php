@@ -153,7 +153,11 @@ class DashboardController extends Controller
                 'driver'          => ['id' => $r->driver->id, 'name' => $r->driver->name, 'avatar' => $r->driver->avatar],
             ]);
 
-        return response()->json(['trips' => $trips, 'routes' => $routes]);
+        $removedRouteIds = $knownRouteIds
+            ? FixedRoute::whereIn('id', $knownRouteIds)->where('status', '!=', 'active')->pluck('id')->toArray()
+            : [];
+
+        return response()->json(['trips' => $trips, 'routes' => $routes, 'removed_route_ids' => $removedRouteIds]);
     }
 
     /** Polling: lista atual de solicitações avulsas pendentes para o motorista */
