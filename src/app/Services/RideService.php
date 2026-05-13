@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Ride;
 use App\Models\RideRequest;
+use App\Models\Trip;
 use App\Models\User;
 use App\Events\NewRideRequestForDriver;
 use App\Events\RideAccepted;
@@ -64,6 +65,16 @@ class RideService
     {
         (new InProgressState())->complete($ride);
         $ride->rideRequest?->update(['status' => 'completed']);
+
+        // Marca a viagem avulsa como 'departed' quando a corrida termina,
+        // fazendo-a sumir das listas do dashboard de motorista e caronista.
+        $tripId = $ride->rideRequest?->trip_id;
+        if ($tripId) {
+            $trip = Trip::find($tripId);
+            if ($trip && in_array($trip->status, ['open', 'full'])) {
+                $trip->update(['status' => 'departed']);
+            }
+        }
     }
 
     public function cancel(Ride $ride, string $reason): void
