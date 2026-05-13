@@ -82,6 +82,7 @@ class RideController extends Controller
         return response()->json([
             'request_status'     => $rideRequest->status,
             'scheduled_for'      => $rideRequest->scheduled_for?->toIso8601String(),
+            'fixed_route_id'     => $rideRequest->fixed_route_id,
             'fixed_route_status' => $rideRequest->fixedRoute?->status,
             'ride' => $ride ? [
                 'id'                   => $ride->id,

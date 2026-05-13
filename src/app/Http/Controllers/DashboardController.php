@@ -74,7 +74,7 @@ class DashboardController extends Controller
             ->latest()
             ->first();
 
-        $rideRequests = RideRequest::with(['ride', 'ride.ratings' => fn ($q) => $q->where('rater_id', $user->id)])
+        $rideRequests = RideRequest::with(['ride', 'ride.ratings' => fn ($q) => $q->where('rater_id', $user->id), 'fixedRoute'])
             ->where('passenger_id', $user->id)
             ->orderByDesc('scheduled_for')
             ->get();

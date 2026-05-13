@@ -4,12 +4,13 @@
 
 @php
 $statusLabel = [
-    'pending'     => 'Pendente',
-    'accepted'    => 'Aceita',
-    'in_progress' => 'Em andamento',
-    'completed'   => 'Finalizada',
-    'cancelled'   => 'Cancelada',
-    'rejected'    => 'Recusada',
+    'pending'      => 'Pendente',
+    'accepted'     => 'Aceita',
+    'in_progress'  => 'Em andamento',
+    'completed'    => 'Finalizada',
+    'cancelled'    => 'Cancelada',
+    'rejected'     => 'Recusada',
+    'route_paused' => 'Pausada',
 ];
 @endphp
 
@@ -287,18 +288,20 @@ $statusLabel = [
                 if ($eff === 'accepted' && $rideActualStatus === 'in_progress') $eff = 'in_progress';
                 if ($eff === 'accepted' && $rideActualStatus === 'completed')   $eff = 'completed';
                 if ($eff === 'accepted' && $rideActualStatus === 'cancelled')   $eff = 'cancelled';
+                if ($eff === 'accepted' && $req->fixedRoute?->status === 'paused') $eff = 'route_paused';
 
                 $filterGroup = match(true) {
-                    in_array($eff, ['pending','accepted','in_progress']) => 'active',
-                    $eff === 'completed'                                 => 'done',
-                    default                                              => 'cancelled',
+                    in_array($eff, ['pending','accepted','in_progress','route_paused']) => 'active',
+                    $eff === 'completed'                                                 => 'done',
+                    default                                                              => 'cancelled',
                 };
-                $canTrack = in_array($eff, ['pending','accepted','in_progress']);
+                $canTrack = in_array($eff, ['pending','accepted','in_progress','route_paused']);
                 $myRating = $eff === 'completed' && $req->ride ? $req->ride->ratings->first() : null;
                 $canRate  = $eff === 'completed' && $req->ride && !$myRating;
             @endphp
                 <div class="bg-white rounded-xl border border-gray-200 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm req-card"
-                     data-filter="{{ $filterGroup }}">
+                     data-filter="{{ $filterGroup }}"
+                     data-fixed-route-id="{{ $req->fixed_route_id ?? '' }}">
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-1.5 mb-0.5">
                             @if($req->trip_id)
@@ -328,14 +331,17 @@ $statusLabel = [
                                 {{ str_repeat('★', $myRating->stars) }}{{ str_repeat('☆', 5 - $myRating->stars) }}
                             </span>
                         @endif
-                        <span class="text-xs font-semibold px-3 py-1 rounded-full
-                            {{ $eff === 'pending'     ? 'bg-yellow-100 text-yellow-700' : '' }}
-                            {{ $eff === 'accepted'    ? 'bg-green-100 text-green-700'   : '' }}
-                            {{ $eff === 'rejected'    ? 'bg-red-100 text-red-700'       : '' }}
-                            {{ $eff === 'cancelled'   ? 'bg-gray-100 text-gray-500'     : '' }}
-                            {{ $eff === 'in_progress' ? 'bg-blue-100 text-blue-700'     : '' }}
-                            {{ $eff === 'completed'   ? 'bg-purple-100 text-purple-700' : '' }}
-                        ">{{ $statusLabel[$eff] ?? $eff }}</span>
+                        <span class="req-status-badge text-xs font-semibold px-3 py-1 rounded-full"
+                              data-eff="{{ $eff }}"
+                              style="
+                                {{ $eff === 'pending'      ? 'background:#fef9c3;color:#a16207;'  : '' }}
+                                {{ $eff === 'accepted'     ? 'background:#dcfce7;color:#15803d;'  : '' }}
+                                {{ $eff === 'rejected'     ? 'background:#fee2e2;color:#b91c1c;'  : '' }}
+                                {{ $eff === 'cancelled'    ? 'background:#f3f4f6;color:#6b7280;'  : '' }}
+                                {{ $eff === 'in_progress'  ? 'background:#dbeafe;color:#1d4ed8;'  : '' }}
+                                {{ $eff === 'completed'    ? 'background:#f3e8ff;color:#7e22ce;'  : '' }}
+                                {{ $eff === 'route_paused' ? 'background:#ffedd5;color:#c2410c;'  : '' }}
+                              ">{{ $statusLabel[$eff] ?? $eff }}</span>
                     </div>
                 </div>
             @endforeach
@@ -1409,19 +1415,22 @@ window.addEventListener('echo:RideStarted', () => {
     let bannerStatus = '{{ $activeRequest->ride?->status ?? 'accepted' }}';
 
     async function pollBannerStatus() {
-        if (['in_progress', 'completed', 'cancelled'].includes(bannerStatus)) return;
+        if (['in_progress', 'completed', 'cancelled', 'route_paused'].includes(bannerStatus)) return;
         try {
             const res  = await fetch(statusUrl, { headers: { 'Accept': 'application/json' } });
             if (!res.ok) return;
             const data = await res.json();
-            const rideStatus = data.ride?.status;
-            if (rideStatus === bannerStatus) return;
-            bannerStatus = rideStatus;
-            // Dispara o evento como se tivesse vindo do Echo
-            if (rideStatus === 'in_progress') {
+            const rideStatus      = data.ride?.status;
+            const fixedRouteStatus = data.fixed_route_status ?? null;
+            const newStatus = fixedRouteStatus === 'paused' ? 'route_paused' : rideStatus;
+            if (newStatus === bannerStatus) return;
+            bannerStatus = newStatus;
+            if (newStatus === 'in_progress') {
                 window.dispatchEvent(new CustomEvent('echo:RideStarted'));
-            } else if (rideStatus === 'cancelled') {
+            } else if (newStatus === 'cancelled') {
                 document.getElementById('active-request-banner')?.remove();
+            } else if (newStatus === 'route_paused') {
+                window.dispatchEvent(new CustomEvent('echo:FixedRoutePaused', { detail: { route_id: data.fixed_route_id ?? null } }));
             }
         } catch { /* ignora */ }
     }
@@ -1430,9 +1439,35 @@ window.addEventListener('echo:RideStarted', () => {
 }());
 @endif
 
-// ── Passageiro: remove banner quando rota fixa é pausada ─────────────────────
-window.addEventListener('echo:FixedRoutePaused', () => {
-    document.getElementById('active-request-banner')?.remove();
+// ── Passageiro: rota fixa pausada → atualiza banner e cards de solicitações ───
+window.addEventListener('echo:FixedRoutePaused', (ev) => {
+    const banner = document.getElementById('active-request-banner');
+    if (banner) {
+        banner.className = banner.className
+            .replace(/bg-\S+/g, 'bg-orange-50')
+            .replace(/border-\S+/g, 'border-orange-400');
+        const labelEl = banner.querySelector('p.font-bold');
+        if (labelEl) {
+            labelEl.className = labelEl.className.replace(/text-\S+800/g, 'text-orange-800');
+            labelEl.textContent = '⏸ Rota pausada pelo motorista';
+        }
+        const badgeEl = banner.querySelector('span.flex-shrink-0');
+        if (badgeEl) {
+            badgeEl.className = badgeEl.className.replace(/bg-\S+/g, 'bg-orange-500');
+        }
+        banner.querySelector('.animate-ping')?.remove();
+    }
+    // Atualiza cards de "Minhas Solicitações" em tempo real
+    const routeId = ev?.detail?.route_id;
+    if (routeId) {
+        document.querySelectorAll(`[data-fixed-route-id="${routeId}"] .req-status-badge`).forEach(badge => {
+            if (badge.dataset.eff === 'accepted') {
+                badge.dataset.eff = 'route_paused';
+                badge.style = 'background:#ffedd5;color:#c2410c;';
+                badge.textContent = 'Pausada';
+            }
+        });
+    }
 });
 
 // ── Passageiro: remove banner quando motorista cancela a carona ───────────────
