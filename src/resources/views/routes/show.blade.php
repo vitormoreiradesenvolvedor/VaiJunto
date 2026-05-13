@@ -63,10 +63,9 @@
     </div>
 
     {{-- Passageiros confirmados --}}
-    @if($accepted->isNotEmpty())
-    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Confirmados ({{ $accepted->count() }})</h3>
-        <div class="space-y-2">
+    <div id="confirmed-section" class="{{ $accepted->isEmpty() ? 'hidden' : '' }} bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+        <h3 id="confirmed-heading" class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Confirmados ({{ $accepted->count() }})</h3>
+        <div class="space-y-2" id="confirmed-list">
             @foreach($accepted as $req)
             <div class="flex items-center gap-3">
                 <img src="{{ $req->passenger->avatar ?? '' }}"
@@ -76,20 +75,11 @@
                     <p class="text-sm font-medium text-gray-800">{{ $req->passenger->name }}</p>
                     <p class="text-xs text-gray-400">{{ $req->scheduled_for->format('d/m H:i') }}</p>
                 </div>
-                <div class="flex items-center gap-2 flex-shrink-0">
-                    @if($req->ride)
-                    <a href="{{ route('rides.drive', $req->ride) }}"
-                       class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-lg transition">
-                        ▶ Iniciar corrida →
-                    </a>
-                    @endif
-                    <span class="text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full">Confirmado</span>
-                </div>
+                <span class="text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full flex-shrink-0">Confirmado</span>
             </div>
             @endforeach
         </div>
     </div>
-    @endif
 
     {{-- Solicitações pendentes --}}
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
@@ -128,6 +118,18 @@
         Esta rota foi encerrada permanentemente.
     </div>
     @else
+
+    {{-- Iniciar corrida (acima de Pausar rota) --}}
+    @php $rideLinks = $accepted->filter(fn($r) => $r->ride); @endphp
+    <div id="start-ride-section" class="{{ $rideLinks->isEmpty() ? 'hidden' : '' }} space-y-2">
+        @foreach($rideLinks as $req)
+        <a id="start-ride-{{ $req->id }}"
+           href="{{ route('rides.drive', $req->ride) }}"
+           class="flex w-full items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition text-sm shadow">
+            ▶ Iniciar corrida com {{ $req->passenger->name }}
+        </a>
+        @endforeach
+    </div>
 
     {{-- Pausar / Reativar --}}
     <button id="toggle-btn"
@@ -223,13 +225,60 @@ async function acceptReq(routeId, reqId, btn) {
         const res = await fetch(`/routes/${routeId}/requests/${reqId}/accept`, {
             method: "POST", headers: { "X-CSRF-TOKEN": csrf, "Accept": "application/json" },
         });
-        if (res.ok) { document.getElementById(`req-${reqId}`)?.remove(); checkEmpty(); }
-        else {
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById(`req-${reqId}`)?.remove();
+            checkEmpty();
+            addConfirmed(data.request);
+        } else {
             if (btn) { btn.disabled = false; btn.textContent = "Aceitar"; }
             alert("Erro ao aceitar.");
         }
     } catch {
         if (btn) { btn.disabled = false; btn.textContent = "Aceitar"; }
+    }
+}
+
+function addConfirmed(req) {
+    if (!req) return;
+
+    const section  = document.getElementById('confirmed-section');
+    const list     = document.getElementById('confirmed-list');
+    const heading  = document.getElementById('confirmed-heading');
+    if (!section || !list || !heading) return;
+
+    section.classList.remove('hidden');
+
+    const name      = req.passenger?.name ?? '—';
+    const avatar    = req.passenger?.avatar ?? '';
+    const scheduled = req.scheduled_for ?? '';
+
+    const el = document.createElement('div');
+    el.className = 'flex items-center gap-3';
+    el.innerHTML = `
+        <img src="${avatar}"
+             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2563eb&color=fff&size=40'"
+             class="w-9 h-9 rounded-full object-cover border border-gray-200">
+        <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-800">${name}</p>
+            <p class="text-xs text-gray-400">${scheduled}</p>
+        </div>
+        <span class="text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full flex-shrink-0">Confirmado</span>`;
+    list.appendChild(el);
+
+    heading.textContent = `Confirmados (${list.children.length})`;
+
+    if (req.ride_url) {
+        const startSection = document.getElementById('start-ride-section');
+        if (startSection) {
+            startSection.classList.remove('hidden');
+            const link = document.createElement('a');
+            link.id        = `start-ride-${req.id}`;
+            link.href      = req.ride_url;
+            link.className = 'flex w-full items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition text-sm shadow';
+            link.textContent = `▶ Iniciar corrida com ${name}`;
+            startSection.appendChild(link);
+        }
     }
 }
 
