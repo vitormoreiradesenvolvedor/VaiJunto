@@ -425,6 +425,7 @@ const csrfToken     = document.querySelector("meta[name='csrf-token']").content;
 let currentStatus    = root.dataset.uiStatus;
 let driverArrived    = root.dataset.driverArrived === 'true';
 let passengerBoarded = root.dataset.passengerBoarded === 'true';
+let driverEnRoute    = false; // true após primeiro DriverLocationUpdated: impede polling de regredir para scheduled_confirmed
 let polling;
 
 // ── WebSocket (primário) + Polling (fallback a cada 15s) ─────────────────────
@@ -455,7 +456,10 @@ window.addEventListener('echo:DriverLocationUpdated', async (ev) => {
         window.carMarker.setPosition({ lat, lng });
     }
     await checkTrackReroute(lat, lng);
-    // Motorista já enviou localização: ele está a caminho
+    // Motorista já enviou localização: está a caminho — nunca mais voltar para scheduled_confirmed
+    if (!driverEnRoute) {
+        driverEnRoute = true;
+    }
     if (currentStatus === 'scheduled_confirmed') {
         currentStatus = 'driver_found';
         updateBanner('driver_found');
@@ -566,7 +570,7 @@ function applyStatus(data) {
     else if (rideStatus && ["pending","accepted"].includes(rideStatus) && driverArrived)                               ui = "driver_arrived";
     else if (rideStatus && ["pending","accepted"].includes(rideStatus) && fixedRouteStatus === "paused")               ui = "route_paused";
     else if (rideStatus && ["pending","accepted"].includes(rideStatus) && fixedRouteStatus)                            ui = "route_confirmed";
-    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && isScheduledFuture)                           ui = "scheduled_confirmed";
+    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && isScheduledFuture && !driverEnRoute)          ui = "scheduled_confirmed";
     else if (rideStatus && ["pending","accepted"].includes(rideStatus))                                                ui = "driver_found";
     else                                                                                                               ui = "waiting";
 
