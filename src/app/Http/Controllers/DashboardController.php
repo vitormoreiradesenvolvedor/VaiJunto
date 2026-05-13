@@ -198,7 +198,17 @@ class DashboardController extends Controller
             ->get(['id', 'pending_count'])
             ->mapWithKeys(fn ($fr) => [(string) $fr->id => $fr->pending_count]);
 
-        return response()->json(['requests' => $requests, 'fixed_route_pending' => $fixedRoutePending]);
+        $tripPending = Trip::where('driver_id', auth()->id())
+            ->whereIn('status', ['open', 'full'])
+            ->withCount(['requests as pending_count' => fn ($q) => $q->where('status', 'pending')])
+            ->get(['id', 'pending_count'])
+            ->mapWithKeys(fn ($t) => [(string) $t->id => $t->pending_count]);
+
+        return response()->json([
+            'requests'            => $requests,
+            'fixed_route_pending' => $fixedRoutePending,
+            'trip_pending'        => $tripPending,
+        ]);
     }
 }
 

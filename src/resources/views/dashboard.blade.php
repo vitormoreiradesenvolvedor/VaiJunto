@@ -517,7 +517,7 @@ $statusLabel = [
                 <div class="space-y-2">
                 @foreach($myTrips as $trip)
                 @php $within24h = $trip->departs_at->lte(now()->addHours(24)); @endphp
-                <a href="{{ route('trips.show', $trip) }}"
+                <a href="{{ route('trips.show', $trip) }}" data-trip-id="{{ $trip->id }}"
                    class="flex items-center gap-3 bg-white rounded-xl border px-4 py-3 shadow-sm hover:border-blue-300 transition
                           {{ $within24h ? 'border-amber-300 bg-amber-50' : 'border-gray-200' }}">
                     <div class="flex-1 min-w-0">
@@ -526,11 +526,11 @@ $statusLabel = [
                             <span class="text-gray-400 font-normal">→</span>
                             {{ $trip->destination }}
                         </p>
-                        <p class="text-xs text-gray-500 mt-0.5">
+                        <p class="trip-info-p text-xs text-gray-500 mt-0.5">
                             {{ $trip->departs_at->format('d/m H:i') }}
                             · {{ $trip->seats_total }} vagas
                             @if($trip->pending_count > 0)
-                            · <span class="text-blue-600 font-medium">{{ $trip->pending_count }} pendente{{ $trip->pending_count > 1 ? 's' : '' }}</span>
+                            · <span class="trip-pending-count text-blue-600 font-medium" data-count="{{ $trip->pending_count }}">{{ $trip->pending_count }} pendente{{ $trip->pending_count > 1 ? 's' : '' }}</span>
                             @endif
                         </p>
                     </div>
@@ -1199,6 +1199,42 @@ async function pollPendingRequests() {
                 badge.classList.toggle('hidden', count <= 0);
             }
         }
+
+        // Atualiza badges de viagens avulsas com solicitações pendentes
+        if (data.trip_pending) {
+            for (const [tripId, count] of Object.entries(data.trip_pending)) {
+                const tripLink = document.querySelector(`[data-trip-id="${tripId}"]`);
+                if (!tripLink) continue;
+                const infoP = tripLink.querySelector('.trip-info-p');
+                if (!infoP) continue;
+                let span = infoP.querySelector('.trip-pending-count');
+                if (count > 0) {
+                    if (!span) {
+                        span = document.createElement('span');
+                        span.className = 'trip-pending-count text-blue-600 font-medium';
+                        span.dataset.count = '0';
+                        infoP.append(' · ', span);
+                    }
+                    if (parseInt(span.dataset.count) !== count) {
+                        span.dataset.count = count;
+                        span.textContent = `${count} pendente${count !== 1 ? 's' : ''}`;
+                        // Destaca a aba Atividade se não estiver ativa
+                        if (document.getElementById('dpanel-activity')?.classList.contains('hidden')) {
+                            const actBtn = document.getElementById('dtab-activity');
+                            if (actBtn && !actBtn.querySelector('.trip-req-dot')) {
+                                const dot = document.createElement('span');
+                                dot.className = 'trip-req-dot absolute -top-1 -right-1 w-3 h-3 rounded-full bg-blue-500 border-2 border-white';
+                                actBtn.style.position = 'relative';
+                                actBtn.appendChild(dot);
+                            }
+                        }
+                    }
+                } else if (span) {
+                    span.parentNode?.removeChild(span.previousSibling); // remove ' · '
+                    span.remove();
+                }
+            }
+        }
     } catch (err) { console.error('[poll] erro:', err); }
 }
 
@@ -1230,17 +1266,35 @@ if (document.getElementById('pending-list')) {
 
 window.addEventListener('echo:TripRequestReceived', (ev) => {
     const e = ev.detail;
-    // Adiciona badge no card da viagem se estiver visível
-    const tripLink = document.querySelector(`a[href*="/trips/${e.trip_id}"]`);
-    if (tripLink) {
-        let badge = tripLink.querySelector('.rt-badge');
-        if (!badge) {
-            badge = document.createElement('div');
-            badge.className = 'rt-badge mt-2 flex items-center gap-1.5';
-            tripLink.appendChild(badge);
+
+    // Localiza o card da viagem pelo data-trip-id
+    const tripLink = document.querySelector(`[data-trip-id="${e.trip_id}"]`);
+    if (!tripLink) return;
+
+    // Atualiza ou cria o span de pendentes dentro do parágrafo de info
+    const infoP = tripLink.querySelector('.trip-info-p');
+    if (infoP) {
+        let span = infoP.querySelector('.trip-pending-count');
+        if (!span) {
+            span = document.createElement('span');
+            span.className = 'trip-pending-count text-blue-600 font-medium';
+            span.dataset.count = '0';
+            infoP.append(' · ', span);
         }
-        badge.innerHTML = `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold">!</span>
-            <span class="text-xs text-blue-700 font-medium">Nova solicitação de ${e.passenger.name}</span>`;
+        const newCount = (parseInt(span.dataset.count) || 0) + 1;
+        span.dataset.count = newCount;
+        span.textContent = `${newCount} pendente${newCount !== 1 ? 's' : ''}`;
+    }
+
+    // Se o motorista não está na aba Atividade, destaca ela com um ponto azul
+    if (document.getElementById('dpanel-activity')?.classList.contains('hidden')) {
+        const actBtn = document.getElementById('dtab-activity');
+        if (actBtn && !actBtn.querySelector('.trip-req-dot')) {
+            const dot = document.createElement('span');
+            dot.className = 'trip-req-dot absolute -top-1 -right-1 w-3 h-3 rounded-full bg-blue-500 border-2 border-white';
+            actBtn.style.position = 'relative';
+            actBtn.appendChild(dot);
+        }
     }
 });
 
@@ -1321,6 +1375,60 @@ window.addEventListener('echo:NewTripOffer', (ev) => {
         location.reload();
     }
 });
+
+// ── Passageiro: motorista iniciou a viagem → atualiza banner ─────────────────
+window.addEventListener('echo:RideStarted', () => {
+    const banner = document.getElementById('active-request-banner');
+    if (!banner) return;
+    // Atualiza classe e texto do banner para "Viagem em andamento"
+    banner.className = banner.className
+        .replace(/bg-\S+/g, 'bg-green-50')
+        .replace(/border-\S+/g, 'border-green-400');
+    const labelEl = banner.querySelector('p.font-bold');
+    if (labelEl) {
+        labelEl.className = labelEl.className.replace(/text-\S+800/g, 'text-green-800');
+        labelEl.textContent = '📍 Viagem em andamento';
+    }
+    const badgeEl = banner.querySelector('span.flex-shrink-0');
+    if (badgeEl) {
+        badgeEl.className = badgeEl.className.replace(/bg-\S+/g, 'bg-green-600');
+    }
+    // Adiciona o ping animado
+    const iconSpan = banner.querySelector('span.relative.flex-shrink-0');
+    if (iconSpan && !iconSpan.querySelector('.animate-ping')) {
+        const ping = document.createElement('span');
+        ping.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-white animate-ping';
+        iconSpan.appendChild(ping);
+    }
+});
+
+// ── Passageiro: polling do status do banner ativo (fallback quando Echo falha) ──
+@if(isset($activeRequest) && $activeRequest && $activeRequest->ride)
+(function() {
+    const statusUrl = "{{ route('rides.status', $activeRequest) }}";
+    let bannerStatus = '{{ $activeRequest->ride?->status ?? 'accepted' }}';
+
+    async function pollBannerStatus() {
+        if (['in_progress', 'completed', 'cancelled'].includes(bannerStatus)) return;
+        try {
+            const res  = await fetch(statusUrl, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return;
+            const data = await res.json();
+            const rideStatus = data.ride?.status;
+            if (rideStatus === bannerStatus) return;
+            bannerStatus = rideStatus;
+            // Dispara o evento como se tivesse vindo do Echo
+            if (rideStatus === 'in_progress') {
+                window.dispatchEvent(new CustomEvent('echo:RideStarted'));
+            } else if (rideStatus === 'cancelled') {
+                document.getElementById('active-request-banner')?.remove();
+            }
+        } catch { /* ignora */ }
+    }
+
+    setInterval(pollBannerStatus, 8000);
+}());
+@endif
 
 // ── Passageiro: remove banner quando rota fixa é pausada ─────────────────────
 window.addEventListener('echo:FixedRoutePaused', () => {
@@ -1510,6 +1618,7 @@ function showDriverTab(tab) {
         if (p === tab) {
             btn.classList.add('bg-white', 'text-blue-700', 'shadow');
             btn.classList.remove('text-gray-500');
+            if (p === 'activity') btn.querySelector('.trip-req-dot')?.remove();
         } else {
             btn.classList.remove('bg-white', 'text-blue-700', 'shadow');
             btn.classList.add('text-gray-500');
