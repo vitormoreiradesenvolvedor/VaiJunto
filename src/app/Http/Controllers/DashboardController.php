@@ -97,8 +97,13 @@ class DashboardController extends Controller
             ->get();
 
         // Mapa de requests ativas do passageiro (para mostrar "Acompanhar" no lugar de "Solicitar")
+        // Exclui requests cujo ride já foi cancelado ou concluído
         $myPendingReqs = RideRequest::where('passenger_id', $user->id)
             ->whereIn('status', ['pending', 'accepted'])
+            ->where(function ($q) {
+                $q->doesntHave('ride')
+                  ->orWhereHas('ride', fn ($rq) => $rq->whereNotIn('status', ['cancelled', 'completed']));
+            })
             ->get(['id', 'fixed_route_id', 'trip_id', 'status']);
 
         $myFixedRouteReqMap = $myPendingReqs->whereNotNull('fixed_route_id')->keyBy('fixed_route_id');
