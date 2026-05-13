@@ -1382,30 +1382,52 @@ window.addEventListener('echo:NewTripOffer', (ev) => {
     }
 });
 
-// ── Passageiro: motorista iniciou a viagem → atualiza banner ─────────────────
-window.addEventListener('echo:RideStarted', () => {
+// ── Utilitário: atualiza aparência do banner ativo do passageiro ──────────────
+function updateActiveBanner(bg, borderColor, textColor, badgeBg, label, withPing, pingColor) {
     const banner = document.getElementById('active-request-banner');
     if (!banner) return;
-    // Atualiza classe e texto do banner para "Viagem em andamento"
+    // /border-(?!\d)/ evita substituir border-2 (espessura)
     banner.className = banner.className
-        .replace(/bg-\S+/g, 'bg-green-50')
-        .replace(/border-\S+/g, 'border-green-400');
+        .replace(/bg-\S+/g, bg)
+        .replace(/border-(?!\d)\S+/g, borderColor);
     const labelEl = banner.querySelector('p.font-bold');
     if (labelEl) {
-        labelEl.className = labelEl.className.replace(/text-\S+800/g, 'text-green-800');
-        labelEl.textContent = '📍 Viagem em andamento';
+        labelEl.className = labelEl.className.replace(/text-\S+(?:800|700|600)/g, textColor);
+        labelEl.textContent = label;
     }
     const badgeEl = banner.querySelector('span.flex-shrink-0');
-    if (badgeEl) {
-        badgeEl.className = badgeEl.className.replace(/bg-\S+/g, 'bg-green-600');
-    }
-    // Adiciona o ping animado
+    if (badgeEl) badgeEl.className = badgeEl.className.replace(/bg-\S+/g, badgeBg);
     const iconSpan = banner.querySelector('span.relative.flex-shrink-0');
-    if (iconSpan && !iconSpan.querySelector('.animate-ping')) {
-        const ping = document.createElement('span');
-        ping.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-white animate-ping';
-        iconSpan.appendChild(ping);
+    if (iconSpan) {
+        iconSpan.querySelector('.animate-ping')?.remove();
+        if (withPing) {
+            const ping = document.createElement('span');
+            ping.className = `absolute -top-1 -right-1 w-3 h-3 rounded-full ${pingColor} border-2 border-white animate-ping`;
+            iconSpan.appendChild(ping);
+        }
     }
+}
+
+// ── Passageiro: motorista a caminho → atualiza banner de rota fixa ────────────
+let _bannerDriverFound = false;
+window.addEventListener('echo:DriverLocationUpdated', () => {
+    if (_bannerDriverFound) return;
+    const banner = document.getElementById('active-request-banner');
+    if (!banner) return;
+    const labelEl = banner.querySelector('p.font-bold');
+    if (!labelEl) return;
+    const txt = labelEl.textContent;
+    // Só atualiza quando o banner ainda mostra "Vaga confirmada" ou "Pausada"
+    if (!txt.includes('Vaga confirmada') && !txt.includes('Pausada')) return;
+    _bannerDriverFound = true;
+    updateActiveBanner('bg-blue-50', 'border-blue-400', 'text-blue-800', 'bg-blue-600',
+        '🚗 Motorista a caminho!', true, 'bg-blue-500');
+});
+
+// ── Passageiro: motorista iniciou a viagem → atualiza banner ─────────────────
+window.addEventListener('echo:RideStarted', () => {
+    updateActiveBanner('bg-green-50', 'border-green-400', 'text-green-800', 'bg-green-600',
+        '📍 Viagem em andamento', true, 'bg-green-500');
 });
 
 // ── Passageiro: polling do status do banner ativo (fallback quando Echo falha) ──
@@ -1441,22 +1463,9 @@ window.addEventListener('echo:RideStarted', () => {
 
 // ── Passageiro: rota fixa pausada → atualiza banner e cards de solicitações ───
 window.addEventListener('echo:FixedRoutePaused', (ev) => {
-    const banner = document.getElementById('active-request-banner');
-    if (banner) {
-        banner.className = banner.className
-            .replace(/bg-\S+/g, 'bg-orange-50')
-            .replace(/border-\S+/g, 'border-orange-400');
-        const labelEl = banner.querySelector('p.font-bold');
-        if (labelEl) {
-            labelEl.className = labelEl.className.replace(/text-\S+800/g, 'text-orange-800');
-            labelEl.textContent = '⏸ Rota pausada pelo motorista';
-        }
-        const badgeEl = banner.querySelector('span.flex-shrink-0');
-        if (badgeEl) {
-            badgeEl.className = badgeEl.className.replace(/bg-\S+/g, 'bg-orange-500');
-        }
-        banner.querySelector('.animate-ping')?.remove();
-    }
+    _bannerDriverFound = false; // permite nova transição quando rota for reativada
+    updateActiveBanner('bg-orange-50', 'border-orange-400', 'text-orange-800', 'bg-orange-500',
+        '⏸ Rota pausada pelo motorista', false, '');
     // Atualiza cards de "Minhas Solicitações" em tempo real
     const routeId = ev?.detail?.route_id;
     if (routeId) {
