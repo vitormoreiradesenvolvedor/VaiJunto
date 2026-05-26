@@ -22,6 +22,11 @@ class Ride extends Model
         'cancelled_at' => 'datetime',
     ];
 
+    public function rideRequest(): BelongsTo
+    {
+        return $this->belongsTo(RideRequest::class);
+    }
+
     public function driver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'driver_id');
