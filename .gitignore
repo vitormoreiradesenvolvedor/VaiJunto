@@ -1,0 +1,22 @@
+# Laravel
+src/vendor/
+src/.env
+src/storage/logs/*.log
+src/storage/framework/cache/
+src/storage/framework/sessions/
+src/storage/framework/views/
+src/bootstrap/cache/*.php
+
+# Node / build
+node_modules/
+public/hot
+public/mix-manifest.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp

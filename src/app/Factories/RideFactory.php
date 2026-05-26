@@ -13,6 +13,7 @@ class RideFactory
     {
         return Ride::create([
             'driver_id'       => $driver->id,
+            'passenger_id'    => $request->passenger_id,
             'vehicle_id'      => $driver->vehicle->id,
             'ride_request_id' => $request->id,
             'type'            => 'demand',
