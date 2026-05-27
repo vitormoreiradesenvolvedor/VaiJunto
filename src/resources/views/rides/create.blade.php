@@ -29,13 +29,11 @@
         {{-- Origem --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Origem</label>
-            <div class="relative">
-                <input type="text" id="origin-input" autocomplete="off" required
-                       placeholder="Digite ou use sua localização atual"
-                       class="w-full border border-gray-300 rounded-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex items-center gap-2">
+                <div id="origin-ac-container" class="flex-1 min-w-0"></div>
                 <button type="button" id="gps-btn"
                         title="Usar minha localização atual"
-                        class="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 hover:text-blue-700 transition p-1">
+                        class="flex-shrink-0 p-2 rounded-lg border border-gray-300 text-blue-500 hover:bg-blue-50 transition">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none"
                          viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -44,7 +42,6 @@
                 </button>
             </div>
             <p id="gps-status" class="text-xs text-gray-400 mt-1 hidden">Obtendo localização...</p>
-            {{-- Campos ocultos enviados ao backend --}}
             <input type="hidden" name="origin" id="origin-value">
             <input type="hidden" name="origin_coords" id="origin-coords">
         </div>
@@ -52,9 +49,7 @@
         {{-- Destino --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Destino</label>
-            <input type="text" id="destination-input" autocomplete="off" required
-                   placeholder="Digite o endereço de destino"
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div id="destination-ac-container" class="w-full"></div>
             <input type="hidden" name="destination" id="destination-value">
             <input type="hidden" name="destination_coords" id="destination-coords">
         </div>
@@ -87,251 +82,273 @@
     </form>
 </div>
 
+{{-- Estilos para os web components do Maps --}}
+<style>
+    gmp-place-autocomplete {
+        width: 100%;
+        --gmp-place-autocomplete-background-color: #fff;
+        --gmp-place-autocomplete-border-radius: 0.5rem;
+        --gmp-place-autocomplete-font-size: 0.875rem;
+    }
+</style>
+
 @endsection
 
 @push('scripts')
 @if($mapsKey)
+{{-- Novo padrão de carregamento recomendado pelo Google (importLibrary) --}}
 <script>
-// ── Estado ──────────────────────────────────────────────
-let map, originMarker, destinationMarker, directionsRenderer;
+(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})
+({key: "{{ $mapsKey }}", v: "weekly"});
+
+// ── Estado ────────────────────────────────────────────────
+let map, originMarker, destinationMarker, routePolyline;
 let originPlace = null, destinationPlace = null;
+let originAC, destAC;
 
-// ── Inicialização do Maps ────────────────────────────────
-window.initMap = function () {
-    const lavras = { lat: -21.2342, lng: -44.9998 };
+// ── Inicialização ─────────────────────────────────────────
+async function initMaps() {
+    const { Map }                    = await google.maps.importLibrary("maps");
+    const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
+    const { Geocoder }               = await google.maps.importLibrary("geocoding");
+    const { Marker }                 = await google.maps.importLibrary("marker");
 
-    map = new google.maps.Map(document.getElementById('map'), {
-        center: lavras,
+    // Mapa centrado em Lavras/MG
+    map = new Map(document.getElementById("map"), {
+        center: { lat: -21.2342, lng: -44.9998 },
         zoom: 13,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
+        gestureHandling: "cooperative",
     });
 
-    directionsRenderer = new google.maps.DirectionsRenderer({
-        suppressMarkers: true,
-        polylineOptions: { strokeColor: '#2563EB', strokeWeight: 4 },
-    });
-    directionsRenderer.setMap(map);
+    // ── PlaceAutocompleteElement — Origem ─────────────────
+    originAC = new PlaceAutocompleteElement({ requestedRegion: "br" });
+    document.getElementById("origin-ac-container").appendChild(originAC);
 
-    // Autocomplete — restringe ao Brasil
-    const opts = { componentRestrictions: { country: 'br' }, fields: ['formatted_address', 'geometry'] };
-
-    const acOrigin = new google.maps.places.Autocomplete(
-        document.getElementById('origin-input'), opts
-    );
-    const acDest = new google.maps.places.Autocomplete(
-        document.getElementById('destination-input'), opts
-    );
-
-    acOrigin.addListener('place_changed', () => {
-        const place = acOrigin.getPlace();
-        if (!place.geometry) return;
-        setOrigin(place.formatted_address, place.geometry.location.lat(), place.geometry.location.lng());
+    originAC.addEventListener("gmp-select", async (e) => {
+        const place = e.placePrediction.toPlace();
+        await place.fetchFields(["formattedAddress", "location"]);
+        setOrigin(place.formattedAddress, place.location.lat(), place.location.lng());
     });
 
-    acDest.addListener('place_changed', () => {
-        const place = acDest.getPlace();
-        if (!place.geometry) return;
-        setDestination(place.formatted_address, place.geometry.location.lat(), place.geometry.location.lng());
-    });
-};
+    // ── PlaceAutocompleteElement — Destino ────────────────
+    destAC = new PlaceAutocompleteElement({ requestedRegion: "br" });
+    document.getElementById("destination-ac-container").appendChild(destAC);
 
-// ── Helpers de marcadores ────────────────────────────────
-function setOrigin(address, lat, lng) {
-    originPlace = { address, lat, lng };
-    document.getElementById('origin-value').value  = address;
-    document.getElementById('origin-coords').value = `${lat},${lng}`;
-    document.getElementById('origin-input').value  = address;
-
-    if (originMarker) originMarker.setMap(null);
-    originMarker = new google.maps.Marker({
-        position: { lat, lng }, map,
-        title: 'Origem',
-        icon: { url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' },
+    destAC.addEventListener("gmp-select", async (e) => {
+        const place = e.placePrediction.toPlace();
+        await place.fetchFields(["formattedAddress", "location"]);
+        setDestination(place.formattedAddress, place.location.lat(), place.location.lng());
     });
-    fitMap();
-    maybeDrawRoute();
+
+    // ── Botão GPS ─────────────────────────────────────────
+    document.getElementById("gps-btn").addEventListener("click", () => {
+        if (!navigator.geolocation) {
+            alert("Seu navegador não suporta geolocalização.");
+            return;
+        }
+        const statusEl = document.getElementById("gps-status");
+        statusEl.textContent = "Obtendo localização...";
+        statusEl.classList.remove("hidden");
+
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                try {
+                    const geocoder = new Geocoder();
+                    const { results } = await geocoder.geocode({ location: { lat, lng } });
+                    const address = results?.[0]?.formatted_address ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                    setOrigin(address, lat, lng);
+                    originAC.value = address;
+                } catch {
+                    setOrigin(`${lat.toFixed(5)}, ${lng.toFixed(5)}`, lat, lng);
+                } finally {
+                    statusEl.classList.add("hidden");
+                }
+            },
+            (err) => {
+                statusEl.classList.add("hidden");
+                const msgs = { 1: "Permissão negada.", 2: "Localização indisponível.", 3: "Tempo esgotado." };
+                alert(msgs[err.code] ?? "Erro ao obter localização.");
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    });
+
+    // ── Helpers ───────────────────────────────────────────
+    function setOrigin(address, lat, lng) {
+        originPlace = { address, lat, lng };
+        document.getElementById("origin-value").value  = address;
+        document.getElementById("origin-coords").value = `${lat},${lng}`;
+        placeMarker("origin", { lat, lng }, "Origem", "#16a34a", Marker);
+        fitMap(); drawRoute();
+    }
+
+    function setDestination(address, lat, lng) {
+        destinationPlace = { address, lat, lng };
+        document.getElementById("destination-value").value  = address;
+        document.getElementById("destination-coords").value = `${lat},${lng}`;
+        placeMarker("dest", { lat, lng }, "Destino", "#dc2626", Marker);
+        fitMap(); drawRoute();
+    }
+
+    window._setOrigin      = setOrigin;
+    window._setDestination = setDestination;
 }
 
-function setDestination(address, lat, lng) {
-    destinationPlace = { address, lat, lng };
-    document.getElementById('destination-value').value  = address;
-    document.getElementById('destination-coords').value = `${lat},${lng}`;
-    document.getElementById('destination-input').value  = address;
+function placeMarker(key, position, title, color, Marker) {
+    if (key === "origin"  && originMarker)      { originMarker.setMap(null); }
+    if (key === "dest"    && destinationMarker)  { destinationMarker.setMap(null); }
 
-    if (destinationMarker) destinationMarker.setMap(null);
-    destinationMarker = new google.maps.Marker({
-        position: { lat, lng }, map,
-        title: 'Destino',
-        icon: { url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' },
-    });
-    fitMap();
-    maybeDrawRoute();
+    const pin = document.createElement("div");
+    pin.style.cssText = `width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)`;
+
+    const marker = new Marker({ map, position, title, content: pin });
+
+    if (key === "origin") originMarker = marker;
+    else destinationMarker = marker;
 }
 
 function fitMap() {
+    if (!map) return;
     if (originPlace && destinationPlace) {
         const bounds = new google.maps.LatLngBounds();
         bounds.extend({ lat: originPlace.lat, lng: originPlace.lng });
         bounds.extend({ lat: destinationPlace.lat, lng: destinationPlace.lng });
         map.fitBounds(bounds, 60);
     } else if (originPlace) {
-        map.setCenter({ lat: originPlace.lat, lng: originPlace.lng });
-        map.setZoom(15);
+        map.panTo({ lat: originPlace.lat, lng: originPlace.lng }); map.setZoom(15);
     } else if (destinationPlace) {
-        map.setCenter({ lat: destinationPlace.lat, lng: destinationPlace.lng });
-        map.setZoom(15);
+        map.panTo({ lat: destinationPlace.lat, lng: destinationPlace.lng }); map.setZoom(15);
     }
 }
 
-function maybeDrawRoute() {
+async function drawRoute() {
     if (!originPlace || !destinationPlace) return;
-    const ds = new google.maps.DirectionsService();
-    ds.route({
-        origin:      { lat: originPlace.lat, lng: originPlace.lng },
-        destination: { lat: destinationPlace.lat, lng: destinationPlace.lng },
-        travelMode:  google.maps.TravelMode.DRIVING,
-    }, (result, status) => {
-        if (status === 'OK') directionsRenderer.setDirections(result);
-    });
+    if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
+    try {
+        const ds = new google.maps.DirectionsService();
+        const result = await ds.route({
+            origin:      { lat: originPlace.lat, lng: originPlace.lng },
+            destination: { lat: destinationPlace.lat, lng: destinationPlace.lng },
+            travelMode:  google.maps.TravelMode.DRIVING,
+        });
+        routePolyline = new google.maps.Polyline({
+            path: result.routes[0].overview_path,
+            strokeColor: "#2563EB",
+            strokeWeight: 4,
+            strokeOpacity: 0.8,
+            map,
+        });
+    } catch { /* rota não disponível */ }
 }
 
-// ── Botão GPS ────────────────────────────────────────────
-document.getElementById('gps-btn').addEventListener('click', () => {
-    if (!navigator.geolocation) {
-        alert('Seu navegador não suporta geolocalização.');
-        return;
-    }
-    const status = document.getElementById('gps-status');
-    status.textContent = 'Obtendo localização...';
-    status.classList.remove('hidden');
+initMaps();
+</script>
 
-    navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            const geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ location: { lat, lng } }, (results, geoStatus) => {
-                status.classList.add('hidden');
-                if (geoStatus === 'OK' && results[0]) {
-                    setOrigin(results[0].formatted_address, lat, lng);
-                } else {
-                    setOrigin(`${lat.toFixed(6)}, ${lng.toFixed(6)}`, lat, lng);
-                }
-            });
-        },
-        (err) => {
-            status.classList.add('hidden');
-            const msgs = {
-                1: 'Permissão de localização negada.',
-                2: 'Localização indisponível.',
-                3: 'Tempo esgotado ao obter localização.',
-            };
-            alert(msgs[err.code] ?? 'Erro ao obter localização.');
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-    );
-});
-</script>
-<script
-    src="https://maps.googleapis.com/maps/api/js?key={{ $mapsKey }}&libraries=places&callback=initMap"
-    async defer>
-</script>
 @else
+{{-- Fallback sem API key: GPS simples --}}
 <script>
-// Sem Maps API — aceita texto livre e coordenadas via geolocation simples
-document.getElementById('gps-btn')?.addEventListener('click', () => {
-    if (!navigator.geolocation) { alert('Seu navegador não suporta geolocalização.'); return; }
-    const status = document.getElementById('gps-status');
-    status.textContent = 'Obtendo localização...';
-    status.classList.remove('hidden');
+document.getElementById("gps-btn").addEventListener("click", () => {
+    if (!navigator.geolocation) { alert("Geolocalização não suportada."); return; }
+    const statusEl = document.getElementById("gps-status");
+    statusEl.textContent = "Obtendo localização...";
+    statusEl.classList.remove("hidden");
     navigator.geolocation.getCurrentPosition(pos => {
-        status.classList.add('hidden');
+        statusEl.classList.add("hidden");
         const val = `${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
-        document.getElementById('origin-input').value  = val;
-        document.getElementById('origin-value').value  = val;
-        document.getElementById('origin-coords').value = val;
-    }, () => { status.classList.add('hidden'); alert('Não foi possível obter a localização.'); });
+        document.getElementById("origin-value").value  = val;
+        document.getElementById("origin-coords").value = val;
+        // Injeta um input visível simples caso não exista
+        const container = document.getElementById("origin-ac-container");
+        let input = container.querySelector("input");
+        if (!input) {
+            input = document.createElement("input");
+            input.className = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm";
+            container.appendChild(input);
+        }
+        input.value = val;
+    }, () => { statusEl.classList.add("hidden"); alert("Não foi possível obter a localização."); });
+});
+
+// Injeta inputs simples de texto no fallback
+["origin-ac-container","destination-ac-container"].forEach((id, i) => {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = i === 0 ? "Endereço de origem" : "Endereço de destino";
+    input.className = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+    input.addEventListener("input", () => {
+        document.getElementById(i === 0 ? "origin-value" : "destination-value").value = input.value;
+    });
+    document.getElementById(id).appendChild(input);
 });
 </script>
 @endif
 
+{{-- Submit --}}
 <script>
-// ── Submit do formulário ─────────────────────────────────
-document.getElementById('ride-form').addEventListener('submit', async function (e) {
+document.getElementById("ride-form").addEventListener("submit", async function (e) {
     e.preventDefault();
 
-    const alertSuccess = document.getElementById('alert-success');
-    const alertError   = document.getElementById('alert-error');
-    alertSuccess.classList.add('hidden');
-    alertError.classList.add('hidden');
+    const alertSuccess = document.getElementById("alert-success");
+    const alertError   = document.getElementById("alert-error");
+    alertSuccess.classList.add("hidden");
+    alertError.classList.add("hidden");
 
-    // Sincroniza o valor do input visível com o hidden (caso Maps não esteja ativo)
-    const originInput = document.getElementById('origin-input');
-    const destInput   = document.getElementById('destination-input');
-
-    if (!document.getElementById('origin-value').value) {
-        document.getElementById('origin-value').value = originInput.value;
-    }
-    if (!document.getElementById('destination-value').value) {
-        document.getElementById('destination-value').value = destInput.value;
-    }
-    if (!document.getElementById('origin-coords').value) {
-        document.getElementById('origin-coords').value = '0,0';
-    }
-    if (!document.getElementById('destination-coords').value) {
-        document.getElementById('destination-coords').value = '0,0';
-    }
+    // Garante que coords tenham valor mesmo sem Maps
+    if (!document.getElementById("origin-coords").value)      document.getElementById("origin-coords").value = "0,0";
+    if (!document.getElementById("destination-coords").value) document.getElementById("destination-coords").value = "0,0";
 
     const payload = {
-        origin:              document.getElementById('origin-value').value,
-        destination:         document.getElementById('destination-value').value,
-        origin_coords:       document.getElementById('origin-coords').value,
-        destination_coords:  document.getElementById('destination-coords').value,
-        scheduled_for:       new Date(document.getElementById('scheduled_for').value).toISOString(),
-        seats_needed:        parseInt(document.getElementById('seats_needed').value),
+        origin:             document.getElementById("origin-value").value.trim(),
+        destination:        document.getElementById("destination-value").value.trim(),
+        origin_coords:      document.getElementById("origin-coords").value,
+        destination_coords: document.getElementById("destination-coords").value,
+        scheduled_for:      new Date(document.getElementById("scheduled_for").value).toISOString(),
+        seats_needed:       parseInt(document.getElementById("seats_needed").value),
     };
 
     if (!payload.origin || !payload.destination) {
-        alertError.textContent = 'Preencha a origem e o destino.';
-        alertError.classList.remove('hidden');
+        alertError.textContent = "Selecione a origem e o destino.";
+        alertError.classList.remove("hidden");
         return;
     }
 
-    const btn = document.getElementById('submit-btn');
-    btn.disabled = true;
-    btn.textContent = 'Enviando...';
+    const btn = document.getElementById("submit-btn");
+    btn.disabled = true; btn.textContent = "Enviando...";
 
-    const res = await fetch('/rides/request', {
-        method:  'POST',
+    const res = await fetch("/rides/request", {
+        method:  "POST",
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json',
-            'Accept':       'application/json',
+            "X-CSRF-TOKEN": document.querySelector("meta[name='csrf-token']").content,
+            "Content-Type": "application/json",
+            "Accept":       "application/json",
         },
         body: JSON.stringify(payload),
     });
 
-    btn.disabled = false;
-    btn.textContent = 'Solicitar Carona';
+    btn.disabled = false; btn.textContent = "Solicitar Carona";
 
     if (res.status === 201) {
-        alertSuccess.classList.remove('hidden');
-        alertSuccess.scrollIntoView({ behavior: 'smooth' });
-        e.target.reset();
+        alertSuccess.classList.remove("hidden");
+        alertSuccess.scrollIntoView({ behavior: "smooth" });
+        document.getElementById("ride-form").reset();
+        // Limpa estado do mapa
         originPlace = null; destinationPlace = null;
-        if (typeof originMarker !== 'undefined' && originMarker) originMarker.setMap(null);
-        if (typeof destinationMarker !== 'undefined' && destinationMarker) destinationMarker.setMap(null);
-        document.getElementById('origin-input').value = '';
-        document.getElementById('destination-input').value = '';
+        if (typeof originMarker !== "undefined" && originMarker)     originMarker.setMap(null);
+        if (typeof destinationMarker !== "undefined" && destinationMarker) destinationMarker.setMap(null);
+        if (typeof routePolyline !== "undefined" && routePolyline)   routePolyline.setMap(null);
+        if (typeof originAC !== "undefined" && originAC) originAC.value = "";
+        if (typeof destAC   !== "undefined" && destAC)   destAC.value   = "";
     } else {
-        const data = await res.json();
-        const msgs = data.errors
-            ? Object.values(data.errors).flat().join(' ')
-            : (data.message ?? 'Erro ao enviar solicitação.');
-        alertError.textContent = msgs;
-        alertError.classList.remove('hidden');
+        const data = await res.json().catch(() => ({}));
+        alertError.textContent = data.errors
+            ? Object.values(data.errors).flat().join(" ")
+            : (data.message ?? "Erro ao enviar solicitação.");
+        alertError.classList.remove("hidden");
     }
 });
 </script>
