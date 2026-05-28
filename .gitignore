@@ -23,3 +23,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Ferramentas de desenvolvimento local
+.gemini/
+make_commit.py
