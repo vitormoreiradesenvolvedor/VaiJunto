@@ -13,7 +13,7 @@ it('authenticates user with valid ufla institutional email', function () {
     $socialiteUser->shouldReceive('getName')->andReturn('João Silva');
     $socialiteUser->shouldReceive('getAvatar')->andReturn('https://example.com/avatar.jpg');
 
-    Socialite::shouldReceive('driver->stateless->user')->andReturn($socialiteUser);
+    Socialite::shouldReceive('driver->stateless->redirectUrl->user')->andReturn($socialiteUser);
 
     $response = $this->get('/auth/google/callback?code=fake_code');
 
@@ -29,7 +29,7 @@ it('authenticates user with @ufla.br email', function () {
     $socialiteUser->shouldReceive('getName')->andReturn('Prof. Maria');
     $socialiteUser->shouldReceive('getAvatar')->andReturn('https://example.com/avatar.jpg');
 
-    Socialite::shouldReceive('driver->stateless->user')->andReturn($socialiteUser);
+    Socialite::shouldReceive('driver->stateless->redirectUrl->user')->andReturn($socialiteUser);
 
     $response = $this->get('/auth/google/callback?code=fake_code');
 
@@ -44,7 +44,7 @@ it('rejects authentication with non-ufla email', function () {
     $socialiteUser->shouldReceive('getName')->andReturn('Externo');
     $socialiteUser->shouldReceive('getAvatar')->andReturn('');
 
-    Socialite::shouldReceive('driver->stateless->user')->andReturn($socialiteUser);
+    Socialite::shouldReceive('driver->stateless->redirectUrl->user')->andReturn($socialiteUser);
 
     $response = $this->get('/auth/google/callback?code=fake_code');
 

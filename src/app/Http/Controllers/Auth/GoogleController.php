@@ -12,15 +12,20 @@ class GoogleController extends Controller
 {
     private const UFLA_PATTERN = '/^[^@]+@([a-z0-9-]+\.)*ufla\.br$/i';
 
+    private function callbackUrl(): string
+    {
+        return request()->schemeAndHttpHost() . '/auth/google/callback';
+    }
+
     public function redirect(): RedirectResponse
     {
-        return Socialite::driver('google')->stateless()->redirect();
+        return Socialite::driver('google')->stateless()->redirectUrl($this->callbackUrl())->redirect();
     }
 
     public function callback(): RedirectResponse
     {
         try {
-            $socialUser = Socialite::driver('google')->stateless()->user();
+            $socialUser = Socialite::driver('google')->stateless()->redirectUrl($this->callbackUrl())->user();
         } catch (\Throwable) {
             return redirect()->route('login');
         }
