@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\Rating;
 
 class User extends Authenticatable
 {
@@ -37,6 +38,11 @@ class User extends Authenticatable
         return $this->hasMany(Ride::class, 'driver_id');
     }
 
+    public function trips(): HasMany
+    {
+        return $this->hasMany(Trip::class, 'driver_id');
+    }
+
     public function vehicle(): HasOne
     {
         return $this->hasOne(Vehicle::class);
@@ -45,6 +51,16 @@ class User extends Authenticatable
     public function pointTransactions(): HasMany
     {
         return $this->hasMany(PointTransaction::class);
+    }
+
+    public function ratingsReceived(): HasMany
+    {
+        return $this->hasMany(Rating::class, 'ratee_id');
+    }
+
+    public function ratingsGiven(): HasMany
+    {
+        return $this->hasMany(Rating::class, 'rater_id');
     }
 
     public function notifications(): HasMany
