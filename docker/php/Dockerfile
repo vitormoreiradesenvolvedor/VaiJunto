@@ -4,7 +4,7 @@ RUN apk add --no-cache \
         bash curl git unzip sqlite sqlite-dev \
         libpng-dev libzip-dev icu-dev \
     && docker-php-ext-install \
-        pdo pdo_mysql pdo_sqlite \
+        pdo pdo_mysql pdo_sqlite pdo_pgsql \
         zip gd intl pcntl bcmath
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
