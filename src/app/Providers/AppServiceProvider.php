@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Contracts\RideMatcherInterface;
+use App\Services\AllDriversMatcher;
 use App\Services\BoundingBoxMatcher;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\URL;
@@ -12,7 +13,11 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(RideMatcherInterface::class, BoundingBoxMatcher::class);
+        $matcher = config('app.ride_matcher') === 'all'
+            ? AllDriversMatcher::class
+            : BoundingBoxMatcher::class;
+
+        $this->app->bind(RideMatcherInterface::class, $matcher);
 
         $this->app->singleton(NotificationService::class, function () {
             return new NotificationService(channels: []);
