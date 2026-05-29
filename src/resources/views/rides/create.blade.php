@@ -5,9 +5,8 @@
 @section('content')
 
 <div class="max-w-xl mx-auto">
-    <div class="flex items-center gap-3 mb-6">
-        <a href="{{ route('dashboard') }}"
-           class="text-blue-600 hover:text-blue-800 text-sm transition">← Voltar</a>
+    <div class="flex items-center gap-3 mb-5">
+        <a href="{{ route('dashboard') }}" class="text-blue-600 hover:text-blue-800 text-sm transition">← Voltar</a>
         <h2 class="text-xl font-bold text-gray-900">Solicitar Carona</h2>
     </div>
 
@@ -17,23 +16,22 @@
         </div>
     @endif
 
-    <div id="alert-success" class="hidden mb-4 bg-green-100 border border-green-300 text-green-800 rounded-lg px-4 py-3 text-sm">
-        Solicitação enviada! Aguarde um motorista aceitar.
-        <a href="{{ route('dashboard') }}" class="underline ml-1">Ver minhas solicitações</a>
-    </div>
     <div id="alert-error" class="hidden mb-4 bg-red-100 border border-red-300 text-red-800 rounded-lg px-4 py-3 text-sm"></div>
 
-    <form id="ride-form" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
+    <form id="ride-form" class="space-y-4">
         @csrf
 
-        {{-- Origem --}}
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Origem</label>
-            <div class="flex items-center gap-2">
-                <div id="origin-ac-container" class="flex-1 min-w-0"></div>
-                <button type="button" id="gps-btn"
-                        title="Usar minha localização atual"
-                        class="flex-shrink-0 p-2 rounded-lg border border-gray-400 text-blue-500 hover:bg-blue-50 transition">
+        {{-- ── Campos de endereço estilo Uber ────────────────────────── --}}
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-visible relative">
+
+            {{-- Origem --}}
+            <div class="flex items-center px-4 py-3 border-b border-gray-100">
+                <span class="w-3 h-3 rounded-full bg-green-500 flex-shrink-0 mr-3"></span>
+                <input id="origin-input" type="text" autocomplete="off"
+                       placeholder="De onde você vai sair?"
+                       class="flex-1 text-sm text-gray-800 outline-none placeholder-gray-400 bg-transparent min-w-0">
+                <button type="button" id="gps-btn" title="Usar minha localização"
+                        class="ml-2 flex-shrink-0 text-blue-500 hover:text-blue-700 transition">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none"
                          viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -41,23 +39,38 @@
                     </svg>
                 </button>
             </div>
-            <p id="gps-status" class="text-xs text-gray-500 mt-1 hidden"></p>
-            <input type="hidden" name="origin" id="origin-value">
-            <input type="hidden" name="origin_coords" id="origin-coords">
+            <p id="gps-status" class="hidden text-xs text-gray-500 px-4 pb-1"></p>
+
+            {{-- Linha pontilhada entre os campos --}}
+            <div class="flex items-center px-4">
+                <div class="w-3 flex justify-center mr-3">
+                    <div class="w-px h-3 border-l-2 border-dashed border-gray-300"></div>
+                </div>
+            </div>
+
+            {{-- Destino --}}
+            <div class="flex items-center px-4 py-3">
+                <span class="w-3 h-3 rounded-sm bg-gray-800 flex-shrink-0 mr-3"></span>
+                <input id="destination-input" type="text" autocomplete="off"
+                       placeholder="Para onde você vai?"
+                       class="flex-1 text-sm text-gray-800 outline-none placeholder-gray-400 bg-transparent min-w-0">
+            </div>
+
+            <input type="hidden" name="origin"             id="origin-value">
+            <input type="hidden" name="origin_coords"      id="origin-coords">
+            <input type="hidden" name="destination"        id="destination-value">
+            <input type="hidden" name="destination_coords" id="destination-coords">
         </div>
 
-        {{-- Destino --}}
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Destino</label>
-            <div id="destination-ac-container" class="w-full"></div>
-            <input type="hidden" name="destination" id="destination-value">
-            <input type="hidden" name="destination_coords" id="destination-coords">
+        {{-- Dropdown de sugestões --}}
+        <div id="suggestions-dropdown"
+             class="hidden bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
         </div>
 
         {{-- Mapa --}}
         @if($mapsKey)
         <div>
-            <div class="flex gap-2 mb-2" id="map-mode-bar">
+            <div class="flex gap-2 mb-2">
                 <button type="button" id="mode-origin-btn"
                         class="flex-1 py-1.5 text-xs font-semibold rounded-lg border-2 border-green-500 bg-green-50 text-green-700 transition">
                     📍 Definir Origem
@@ -67,64 +80,56 @@
                     🏁 Definir Destino
                 </button>
             </div>
-            <div id="map" class="w-full h-56 rounded-xl border border-gray-300 bg-gray-100 cursor-crosshair"></div>
-            <p class="text-xs text-gray-400 mt-1 text-center">Clique no mapa ou use a busca para definir os pontos</p>
+            <div id="map" class="w-full h-52 rounded-xl border border-gray-300 bg-gray-100 cursor-crosshair"></div>
+            <p class="text-xs text-gray-400 mt-1 text-center">Clique no mapa para definir os pontos</p>
         </div>
         @endif
 
         {{-- Quando? --}}
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Quando?</label>
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+            <p class="text-sm font-medium text-gray-700 mb-2">Quando?</p>
             <div class="flex gap-2 mb-3">
                 <button type="button" id="btn-now"
                         class="flex-1 py-2 text-sm font-medium rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 transition">
                     Agora
                 </button>
                 <button type="button" id="btn-schedule"
-                        class="flex-1 py-2 text-sm font-medium rounded-lg border border-gray-400 bg-white text-gray-600 transition hover:border-blue-400 hover:text-blue-600">
+                        class="flex-1 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-600 transition hover:border-blue-400 hover:text-blue-600">
                     Agendar
                 </button>
             </div>
             <div id="datetime-field" class="hidden">
                 <input type="datetime-local" id="scheduled_for_input"
                        min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}"
-                       class="w-full border border-gray-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <input type="hidden" name="scheduled_for" id="scheduled_for">
         </div>
 
         {{-- Assentos --}}
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Assentos Necessários</label>
-            <input type="number" name="seats_needed" id="seats_needed" required
-                   min="1" max="6" value="1"
-                   class="w-full border border-gray-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+            <p class="text-sm font-medium text-gray-700 mb-2">Assentos necessários</p>
+            <div class="flex items-center gap-4">
+                <button type="button" id="seats-dec"
+                        class="w-9 h-9 rounded-full border border-gray-300 text-gray-600 font-bold text-lg flex items-center justify-center hover:bg-gray-50 transition">−</button>
+                <span id="seats-display" class="text-xl font-bold text-gray-900 w-6 text-center">1</span>
+                <button type="button" id="seats-inc"
+                        class="w-9 h-9 rounded-full border border-gray-300 text-gray-600 font-bold text-lg flex items-center justify-center hover:bg-gray-50 transition">+</button>
+                <input type="hidden" name="seats_needed" id="seats_needed" value="1">
+            </div>
         </div>
 
         <button type="submit" id="submit-btn"
-                class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-3 rounded-xl shadow transition text-sm">
+                class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-3.5 rounded-xl shadow transition">
             Solicitar Carona
         </button>
     </form>
 </div>
 
-<style>
-    /* Fix 3: força modo claro + borda cinza-escura nos web components do Maps */
-    gmp-place-autocomplete {
-        width: 100%;
-        color-scheme: light;
-        border: 1px solid #6b7280; /* gray-500 */
-        border-radius: 0.5rem;
-        background-color: #ffffff;
-        --gmp-place-autocomplete-background-color: #ffffff;
-        --gmp-place-autocomplete-font-size: 0.875rem;
-        --gmp-place-autocomplete-border-radius: 0.5rem;
-    }
-</style>
-
 @endsection
 
 @push('scripts')
+
 {{-- Toggle Agora / Agendar --}}
 <script>
 let scheduleMode = "now";
@@ -133,14 +138,22 @@ document.getElementById("btn-now").addEventListener("click", () => {
     scheduleMode = "now";
     document.getElementById("datetime-field").classList.add("hidden");
     document.getElementById("btn-now").className     = "flex-1 py-2 text-sm font-medium rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 transition";
-    document.getElementById("btn-schedule").className = "flex-1 py-2 text-sm font-medium rounded-lg border border-gray-400 bg-white text-gray-600 transition hover:border-blue-400 hover:text-blue-600";
+    document.getElementById("btn-schedule").className = "flex-1 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-600 transition hover:border-blue-400 hover:text-blue-600";
 });
-
 document.getElementById("btn-schedule").addEventListener("click", () => {
     scheduleMode = "later";
     document.getElementById("datetime-field").classList.remove("hidden");
     document.getElementById("btn-schedule").className = "flex-1 py-2 text-sm font-medium rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 transition";
-    document.getElementById("btn-now").className      = "flex-1 py-2 text-sm font-medium rounded-lg border border-gray-400 bg-white text-gray-600 transition hover:border-blue-400 hover:text-blue-600";
+    document.getElementById("btn-now").className      = "flex-1 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-600 transition hover:border-blue-400 hover:text-blue-600";
+});
+
+// Assentos
+let seats = 1;
+document.getElementById("seats-dec").addEventListener("click", () => {
+    if (seats > 1) { seats--; document.getElementById("seats-display").textContent = seats; document.getElementById("seats_needed").value = seats; }
+});
+document.getElementById("seats-inc").addEventListener("click", () => {
+    if (seats < 6) { seats++; document.getElementById("seats-display").textContent = seats; document.getElementById("seats_needed").value = seats; }
 });
 </script>
 
@@ -151,13 +164,12 @@ document.getElementById("btn-schedule").addEventListener("click", () => {
 
 let map, originMarker, destinationMarker, routePolyline;
 let originPlace = null, destinationPlace = null;
-let originAC, destAC;
 let mapClickMode = "origin";
 
 async function initMaps() {
-    const { Map }                      = await google.maps.importLibrary("maps");
-    const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
-    const { Geocoder }                 = await google.maps.importLibrary("geocoding");
+    const { Map }      = await google.maps.importLibrary("maps");
+    const { Geocoder } = await google.maps.importLibrary("geocoding");
+    await google.maps.importLibrary("places");
 
     map = new Map(document.getElementById("map"), {
         center: { lat: -21.2342, lng: -44.9998 },
@@ -168,98 +180,166 @@ async function initMaps() {
         gestureHandling: "cooperative",
     });
 
-    originAC = new PlaceAutocompleteElement({ requestedRegion: "br" });
-    document.getElementById("origin-ac-container").appendChild(originAC);
-    originAC.addEventListener("gmp-select", async (e) => {
-        const place = e.placePrediction.toPlace();
-        await place.fetchFields(["formattedAddress", "location"]);
-        setOrigin(place.formattedAddress, place.location.lat(), place.location.lng());
-    });
+    const acService     = new google.maps.places.AutocompleteService();
+    const placesService = new google.maps.places.PlacesService(map);
+    const geocoder      = new Geocoder();
 
-    destAC = new PlaceAutocompleteElement({ requestedRegion: "br" });
-    document.getElementById("destination-ac-container").appendChild(destAC);
-    destAC.addEventListener("gmp-select", async (e) => {
-        const place = e.placePrediction.toPlace();
-        await place.fetchFields(["formattedAddress", "location"]);
-        setDestination(place.formattedAddress, place.location.lat(), place.location.lng());
-    });
+    setupAutocomplete("origin-input",      acService, placesService, setOrigin);
+    setupAutocomplete("destination-input", acService, placesService, setDestination);
 
-    const geocoder = new Geocoder();
-
-    // ── Clique no mapa ────────────────────────────────────
+    // Clique no mapa
     map.addListener("click", async (e) => {
-        const lat = e.latLng.lat();
-        const lng = e.latLng.lng();
+        const lat = e.latLng.lat(), lng = e.latLng.lng();
         let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
         try {
             const { results } = await geocoder.geocode({ location: { lat, lng } });
             if (results?.[0]) address = results[0].formatted_address;
-        } catch { /* usa coords brutas */ }
-
+        } catch {}
         if (mapClickMode === "origin") {
             setOrigin(address, lat, lng);
-            originAC.value = address;
+            document.getElementById("origin-input").value = address;
             setMapMode("destination");
         } else {
             setDestination(address, lat, lng);
-            destAC.value = address;
+            document.getElementById("destination-input").value = address;
         }
     });
 
     document.getElementById("mode-origin-btn").addEventListener("click", () => setMapMode("origin"));
     document.getElementById("mode-dest-btn").addEventListener("click",   () => setMapMode("destination"));
 
-    // ── GPS ───────────────────────────────────────────────
+    // GPS
     document.getElementById("gps-btn").addEventListener("click", () => {
         const statusEl = document.getElementById("gps-status");
         if (!window.isSecureContext) {
-            statusEl.textContent = "GPS indisponível em HTTP. Use a busca ou clique no mapa.";
+            statusEl.textContent = "GPS indisponível em HTTP.";
             statusEl.classList.remove("hidden"); return;
         }
         if (!navigator.geolocation) { alert("Geolocalização não suportada."); return; }
         statusEl.textContent = "Obtendo localização...";
         statusEl.classList.remove("hidden");
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude, lng = pos.coords.longitude;
+            let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            try {
+                const { results } = await geocoder.geocode({ location: { lat, lng } });
+                if (results?.[0]) address = results[0].formatted_address;
+            } catch {}
+            setOrigin(address, lat, lng);
+            document.getElementById("origin-input").value = address;
+            statusEl.classList.add("hidden");
+        }, (err) => {
+            statusEl.classList.add("hidden");
+            const msgs = { 1: "Permissão negada.", 2: "Localização indisponível.", 3: "Tempo esgotado." };
+            statusEl.textContent = msgs[err.code] ?? "Erro ao obter localização.";
+            statusEl.classList.remove("hidden");
+        }, { enableHighAccuracy: true, timeout: 10000 });
+    });
+}
 
-        navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-                const lat = pos.coords.latitude, lng = pos.coords.longitude;
-                let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-                try {
-                    const { results } = await geocoder.geocode({ location: { lat, lng } });
-                    if (results?.[0]) address = results[0].formatted_address;
-                } catch { /* usa coords brutas */ }
-                setOrigin(address, lat, lng);
-                originAC.value = address;
-                statusEl.classList.add("hidden");
-            },
-            (err) => {
-                statusEl.classList.add("hidden");
-                const msgs = { 1: "Permissão negada. Use a busca ou clique no mapa.", 2: "Localização indisponível.", 3: "Tempo esgotado." };
-                statusEl.textContent = msgs[err.code] ?? "Erro ao obter localização.";
-                statusEl.classList.remove("hidden");
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
+// ── Autocomplete custom ───────────────────────────────────────────────────────
+function setupAutocomplete(inputId, acService, placesService, onSelect) {
+    const input    = document.getElementById(inputId);
+    const dropdown = document.getElementById("suggestions-dropdown");
+    let debounce;
+    let activeIndex = -1;
+
+    input.addEventListener("input", () => {
+        clearTimeout(debounce);
+        const val = input.value.trim();
+        if (val.length < 2) { hideDropdown(); return; }
+        debounce = setTimeout(() => {
+            acService.getPlacePredictions(
+                { input: val, componentRestrictions: { country: "br" } },
+                (predictions, status) => {
+                    if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions?.length) {
+                        hideDropdown(); return;
+                    }
+                    renderDropdown(predictions, placesService, onSelect, input);
+                }
+            );
+        }, 300);
     });
 
-    function setOrigin(address, lat, lng) {
-        originPlace = { address, lat, lng };
-        document.getElementById("origin-value").value  = address;
-        document.getElementById("origin-coords").value = `${lat},${lng}`;
-        placeMarker("origin", { lat, lng }, "Origem", "#16a34a");
-        fitMap(); drawRoute();
-    }
+    // Navegação com teclado
+    input.addEventListener("keydown", (e) => {
+        const items = dropdown.querySelectorAll(".sug-item");
+        if (!items.length) return;
+        if (e.key === "ArrowDown") { e.preventDefault(); activeIndex = Math.min(activeIndex + 1, items.length - 1); highlightItem(items, activeIndex); }
+        if (e.key === "ArrowUp")   { e.preventDefault(); activeIndex = Math.max(activeIndex - 1, 0); highlightItem(items, activeIndex); }
+        if (e.key === "Enter" && activeIndex >= 0) { e.preventDefault(); items[activeIndex].dispatchEvent(new MouseEvent("mousedown")); }
+        if (e.key === "Escape") hideDropdown();
+    });
 
-    function setDestination(address, lat, lng) {
-        destinationPlace = { address, lat, lng };
-        document.getElementById("destination-value").value  = address;
-        document.getElementById("destination-coords").value = `${lat},${lng}`;
-        placeMarker("dest", { lat, lng }, "Destino", "#dc2626");
-        fitMap(); drawRoute();
-    }
+    input.addEventListener("blur", () => setTimeout(hideDropdown, 200));
+    input.addEventListener("focus", () => { activeIndex = -1; });
+}
 
-    window._setOrigin      = setOrigin;
-    window._setDestination = setDestination;
+function renderDropdown(predictions, placesService, onSelect, input) {
+    const dropdown = document.getElementById("suggestions-dropdown");
+    activeIndex = -1;
+
+    dropdown.innerHTML = predictions.slice(0, 5).map((p, i) => `
+        <div class="sug-item flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition
+                    ${i < predictions.slice(0,5).length - 1 ? 'border-b border-gray-100' : ''}"
+             data-place-id="${p.place_id}">
+            <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-800 truncate">${p.structured_formatting.main_text}</p>
+                <p class="text-xs text-gray-400 truncate">${p.structured_formatting.secondary_text ?? ''}</p>
+            </div>
+        </div>
+    `).join("");
+
+    dropdown.querySelectorAll(".sug-item").forEach(item => {
+        item.addEventListener("mousedown", () => {
+            placesService.getDetails(
+                { placeId: item.dataset.placeId, fields: ["geometry", "formatted_address"] },
+                (place, status) => {
+                    if (status === google.maps.places.PlacesServiceStatus.OK) {
+                        const lat = place.geometry.location.lat();
+                        const lng = place.geometry.location.lng();
+                        input.value = place.formatted_address;
+                        onSelect(place.formatted_address, lat, lng);
+                    }
+                    hideDropdown();
+                }
+            );
+        });
+    });
+
+    dropdown.classList.remove("hidden");
+}
+
+function hideDropdown() {
+    document.getElementById("suggestions-dropdown").classList.add("hidden");
+}
+
+function highlightItem(items, index) {
+    items.forEach((el, i) => {
+        el.classList.toggle("bg-gray-50", i === index);
+    });
+}
+
+// ── Helpers de mapa ───────────────────────────────────────────────────────────
+function setOrigin(address, lat, lng) {
+    originPlace = { address, lat, lng };
+    document.getElementById("origin-value").value  = address;
+    document.getElementById("origin-coords").value = `${lat},${lng}`;
+    placeMarker("origin", { lat, lng }, "Origem", "#16a34a");
+    fitMap(); drawRoute();
+}
+
+function setDestination(address, lat, lng) {
+    destinationPlace = { address, lat, lng };
+    document.getElementById("destination-value").value  = address;
+    document.getElementById("destination-coords").value = `${lat},${lng}`;
+    placeMarker("dest", { lat, lng }, "Destino", "#dc2626");
+    fitMap(); drawRoute();
 }
 
 function setMapMode(mode) {
@@ -280,14 +360,15 @@ function placeMarker(key, position, title, color) {
     if (key === "dest"   && destinationMarker) destinationMarker.setMap(null);
     const marker = new google.maps.Marker({
         map, position, title,
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: color, fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 },
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8,
+                fillColor: color, fillOpacity: 1,
+                strokeColor: "#fff", strokeWeight: 2 },
     });
     if (key === "origin") originMarker = marker;
     else destinationMarker = marker;
 }
 
 function fitMap() {
-    if (!map) return;
     if (originPlace && destinationPlace) {
         const b = new google.maps.LatLngBounds();
         b.extend({ lat: originPlace.lat, lng: originPlace.lng });
@@ -313,7 +394,7 @@ async function drawRoute() {
             path: result.routes[0].overview_path,
             strokeColor: "#2563EB", strokeWeight: 4, strokeOpacity: 0.8, map,
         });
-    } catch { /* rota indisponível */ }
+    } catch {}
 }
 
 initMaps();
@@ -321,34 +402,26 @@ initMaps();
 
 @else
 <script>
+// Fallback sem Maps: inputs de texto simples com autocomplete desabilitado
+["origin-input","destination-input"].forEach((id, i) => {
+    document.getElementById(id).addEventListener("input", function () {
+        const hiddenId = i === 0 ? "origin-value" : "destination-value";
+        document.getElementById(hiddenId).value = this.value;
+    });
+});
+
 document.getElementById("gps-btn").addEventListener("click", () => {
     const statusEl = document.getElementById("gps-status");
-    if (!window.isSecureContext) {
-        statusEl.textContent = "GPS indisponível em HTTP. Digite o endereço manualmente.";
-        statusEl.classList.remove("hidden"); return;
-    }
+    if (!window.isSecureContext) { statusEl.textContent = "GPS indisponível em HTTP."; statusEl.classList.remove("hidden"); return; }
     if (!navigator.geolocation) { alert("Geolocalização não suportada."); return; }
-    statusEl.textContent = "Obtendo localização...";
-    statusEl.classList.remove("hidden");
+    statusEl.textContent = "Obtendo localização..."; statusEl.classList.remove("hidden");
     navigator.geolocation.getCurrentPosition(pos => {
         statusEl.classList.add("hidden");
         const val = `${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
+        document.getElementById("origin-input").value  = val;
         document.getElementById("origin-value").value  = val;
         document.getElementById("origin-coords").value = val;
-        const input = document.querySelector("#origin-ac-container input");
-        if (input) input.value = val;
     }, () => { statusEl.classList.add("hidden"); alert("Não foi possível obter a localização."); });
-});
-
-["origin-ac-container", "destination-ac-container"].forEach((id, i) => {
-    const input = Object.assign(document.createElement("input"), {
-        type: "text",
-        placeholder: i === 0 ? "Endereço de origem" : "Endereço de destino",
-        className: "w-full border border-gray-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500",
-    });
-    const hiddenId = i === 0 ? "origin-value" : "destination-value";
-    input.addEventListener("input", () => { document.getElementById(hiddenId).value = input.value; });
-    document.getElementById(id).appendChild(input);
 });
 </script>
 @endif
@@ -357,15 +430,11 @@ document.getElementById("gps-btn").addEventListener("click", () => {
 <script>
 document.getElementById("ride-form").addEventListener("submit", async function (e) {
     e.preventDefault();
-    const alertSuccess = document.getElementById("alert-success");
-    const alertError   = document.getElementById("alert-error");
-    alertSuccess.classList.add("hidden");
+    const alertError = document.getElementById("alert-error");
     alertError.classList.add("hidden");
 
-    // Resolve o horário conforme o modo
     let scheduledFor;
     if (scheduleMode === "now") {
-        // 2 minutos a partir de agora
         scheduledFor = new Date(Date.now() + 2 * 60 * 1000).toISOString();
     } else {
         const inputVal = document.getElementById("scheduled_for_input").value;
@@ -380,8 +449,8 @@ document.getElementById("ride-form").addEventListener("submit", async function (
     if (!document.getElementById("destination-coords").value) document.getElementById("destination-coords").value = "0,0";
 
     const payload = {
-        origin:             document.getElementById("origin-value").value.trim(),
-        destination:        document.getElementById("destination-value").value.trim(),
+        origin:             document.getElementById("origin-value").value.trim()      || document.getElementById("origin-input").value.trim(),
+        destination:        document.getElementById("destination-value").value.trim() || document.getElementById("destination-input").value.trim(),
         origin_coords:      document.getElementById("origin-coords").value,
         destination_coords: document.getElementById("destination-coords").value,
         scheduled_for:      scheduledFor,
@@ -401,7 +470,7 @@ document.getElementById("ride-form").addEventListener("submit", async function (
         headers: {
             "X-CSRF-TOKEN": document.querySelector("meta[name='csrf-token']").content,
             "Content-Type": "application/json",
-            "Accept":       "application/json",
+            "Accept": "application/json",
         },
         body: JSON.stringify(payload),
     });
@@ -409,20 +478,8 @@ document.getElementById("ride-form").addEventListener("submit", async function (
     btn.disabled = false; btn.textContent = "Solicitar Carona";
 
     if (res.status === 201) {
-        alertSuccess.classList.remove("hidden");
-        alertSuccess.scrollIntoView({ behavior: "smooth" });
-        document.getElementById("ride-form").reset();
-        scheduleMode = "now";
-        document.getElementById("btn-now").className     = "flex-1 py-2 text-sm font-medium rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 transition";
-        document.getElementById("btn-schedule").className = "flex-1 py-2 text-sm font-medium rounded-lg border border-gray-400 bg-white text-gray-600 transition hover:border-blue-400 hover:text-blue-600";
-        document.getElementById("datetime-field").classList.add("hidden");
-        originPlace = null; destinationPlace = null;
-        if (typeof originMarker      !== "undefined" && originMarker)      originMarker.setMap(null);
-        if (typeof destinationMarker !== "undefined" && destinationMarker) destinationMarker.setMap(null);
-        if (typeof routePolyline     !== "undefined" && routePolyline)     routePolyline.setMap(null);
-        if (typeof originAC !== "undefined" && originAC) originAC.value = "";
-        if (typeof destAC   !== "undefined" && destAC)   destAC.value   = "";
-        if (typeof setMapMode !== "undefined") setMapMode("origin");
+        const data = await res.json();
+        window.location.href = data.track_url;
     } else {
         const data = await res.json().catch(() => ({}));
         alertError.textContent = data.errors
