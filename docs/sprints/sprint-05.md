@@ -22,12 +22,12 @@ Identificar problemas recorrentes de projeto na solução VaiJunto, selecionar p
 | Documentar Observer (Events/Listeners) | Gabriel | Concluído |
 | Documentar Strategy (RideMatcherInterface) | Lucas | Concluído |
 | Documentar State (ciclo de vida de Ride) | Maria Luiza | Concluído |
-| Documentar Adapter (Google Maps) | Vitor (PO) | Concluído |
+| Documentar Adapter (Google Maps) | Vitor (Tech Lead) | Concluído |
 | Documentar Factory Method (criação de Ride) | Gabriel | Concluído |
 | Documentar Facade (NotificationService) | Maria Luiza | Concluído |
 | Atualizar diagrama de classes com novos elementos | Lucas | Concluído |
-| Atualizar `docs/padroes/padroes-de-projeto.md` | Rafaella (SM) | Concluído |
-| Redigir `docs/sprints/sprint-05.md` | Rafaella (SM) | Concluído |
+| Atualizar `docs/padroes/padroes-de-projeto.md` | Rafaella (Dev Front) | Concluído |
+| Redigir `docs/sprints/sprint-05.md` | Rafaella (Dev Front) | Concluído |
 
 ---
 
@@ -67,7 +67,7 @@ Esta sprint corresponde ao conteúdo de **Padrões de Projeto (Design Patterns)*
 
 ## 7. Evolução da Aplicação Web
 
-Os padrões definidos nesta sprint estabelecem os contratos de código (`interfaces`, `factories`, `events`) que guiarão a implementação nas sprints seguintes. Nenhum código de produção foi escrito ainda, mas os snippets de implementação documentados servem como especificação técnica.
+Os padrões definidos nesta sprint estabelecem os contratos de código (`interfaces`, `factories`, `events`) que orientaram a implementação. Os snippets de implementação documentados refletem a solução técnica adotada.
 
 **Impacto direto na implementação:**
 - `RideMatcherInterface` → binding no `AppServiceProvider` já está especificado
@@ -94,7 +94,6 @@ Os padrões definidos nesta sprint estabelecem os contratos de código (`interfa
 - Coerência mantida com os princípios SOLID da Sprint 4
 
 **O que ficou pendente:**
-- Implementação real dos padrões em código — será feita nas Sprints 6 e 7
 - Avaliação de padrões adicionais (Command para filas de jobs) — adiado para Sprint 6
 
 ---

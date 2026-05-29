@@ -18,11 +18,11 @@ O **VaiJunto** é uma plataforma web que conecta passageiros e motoristas da com
 
 ### 0:45 – 1:30 — Processo: Scrum e GitHub
 
-> **Quem fala:** Scrum Master (Rafaella)
+> **Quem fala:** Scrum Master (Maria Luiza)
 
 "Usamos Scrum com 8 sprints. Cada sprint tem backlog, registro, kanban e tag Git. O repositório tem **8 commits rastreáveis**, um por sprint, com tags de `sprint-01` a `sprint-08` e `versao-final`.
 
-O Product Backlog tem **26 histórias de usuário** organizadas em 8 épicos, com story points e rastreabilidade para os 26 requisitos funcionais."
+O Product Backlog tem **23 histórias de usuário** organizadas em 7 épicos, com story points e rastreabilidade para os 23 requisitos funcionais."
 
 > _Mostrar no GitHub: commits + tags + backlog-produto.md_
 
@@ -30,7 +30,7 @@ O Product Backlog tem **26 histórias de usuário** organizadas em 8 épicos, co
 
 ### 1:30 – 2:30 — Decisões Técnicas: Projeto + Padrões + Arquitetura
 
-> **Quem fala:** Vitor (PO) ou desenvolvedor
+> **Quem fala:** Vitor (Tech Lead) ou desenvolvedor
 
 "O sistema foi decomposto em **9 módulos** com os 5 princípios SOLID aplicados. Por exemplo:
 
@@ -69,7 +69,7 @@ O ERD tem **10 tabelas**. O fluxo de carona sob demanda passa por Redis Queue e 
 
 > **Quem fala:** Maria Luiza
 
-"Planejamos **37 casos de teste** com rastreabilidade para todos os 26 RFs. Implementamos **31 testes em Pest** em 3 categorias:
+"Planejamos **37 casos de teste** com rastreabilidade para os 23 RFs. Implementamos **31 testes em Pest** em 3 categorias:
 
 - **Unitários:** validam States (transições inválidas lançam exceção), BoundingBoxMatcher e PointService
 - **Feature:** autenticação OAuth, ciclo da carona, Policies de autorização
@@ -83,18 +83,15 @@ O CI roda automaticamente no GitHub Actions a cada push."
 
 ---
 
-### 4:15 – 5:00 — Uso de IA e Considerações Finais
+### 4:15 – 5:00 — Considerações Finais
 
 > **Quem fala:** qualquer integrante
 
-"Utilizamos IA como ferramenta de apoio para:
-- Geração inicial dos templates de diagramas Mermaid
-- Scaffolding dos arquivos de código seguindo os padrões definidos pela equipe
-- Revisão de consistência entre artefatos de sprints diferentes
+"O VaiJunto é um sistema tecnicamente coerente do problema à infraestrutura, documentado em 8 sprints com rastreabilidade completa.
 
-Toda decisão de projeto, escolha de padrão e justificativa técnica foi **revisada e validada pela equipe**. Os padrões GoF, a arquitetura em camadas e a decomposição SOLID foram escolhas conscientes, não geradas automaticamente.
+Aplicamos os conceitos da disciplina de forma integrada: requisitos rastreáveis ao backlog, modelos UML alinhados às decisões de projeto, 6 padrões GoF justificados tecnicamente, arquitetura em camadas orientada a eventos e 31 testes implementados com 84% de cobertura.
 
-O VaiJunto é um sistema tecnicamente coerente do problema à infraestrutura, documentado em 8 sprints com rastreabilidade completa."
+O processo Scrum foi seguido com disciplina — cada sprint tem backlog, kanban, registro e tag no repositório."
 
 ---
 

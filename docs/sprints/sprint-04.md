@@ -18,17 +18,17 @@ Definir e justificar as decisões de projeto com base em princípios de qualidad
 
 | Item | Responsável | Status |
 |---|---|---|
-| Decomposição em 9 módulos com responsabilidades | Vitor (PO) + Lucas | Concluído |
+| Decomposição em 9 módulos com responsabilidades | Vitor (Tech Lead) + Lucas | Concluído |
 | Aplicação e documentação dos princípios SOLID | Gabriel + Maria Luiza | Concluído |
-| Decisão 1: papéis de usuário (enum vs. tabelas) | Vitor (PO) | Concluído |
+| Decisão 1: papéis de usuário (enum vs. tabelas) | Vitor (Tech Lead) | Concluído |
 | Decisão 2: algoritmo de matching | Lucas | Concluído |
 | Decisão 3: WebSocket vs. polling | Gabriel | Concluído |
 | Decisão 4: Service Layer vs. Fat Controllers | Maria Luiza | Concluído |
 | Decisão 5: Livewire vs. SPA | Equipe | Concluído |
-| Diagrama de módulos e dependências | Rafaella (SM) | Concluído |
-| Estrutura de pastas do código-fonte | Vitor (PO) | Concluído |
+| Diagrama de módulos e dependências | Rafaella (Dev Front) | Concluído |
+| Estrutura de pastas do código-fonte | Vitor (Tech Lead) | Concluído |
 | Atualizar `docs/projeto/decisoes-de-projeto.md` | Equipe | Concluído |
-| Redigir `docs/sprints/sprint-04.md` | Rafaella (SM) | Concluído |
+| Redigir `docs/sprints/sprint-04.md` | Rafaella (Dev Front) | Concluído |
 
 ---
 
@@ -68,7 +68,7 @@ Esta sprint corresponde ao conteúdo de **Princípios de Projeto**, abrangendo:
 
 ## 7. Evolução da Aplicação Web
 
-A estrutura de pastas definida nesta sprint (`app/Services/`, `app/Contracts/`, `app/Events/`, `app/Listeners/`) será o esqueleto do código Laravel implementado a partir da Sprint 6. As decisões tomadas aqui reduzem o retrabalho nas próximas sprints.
+A estrutura de pastas definida nesta sprint (`app/Services/`, `app/Contracts/`, `app/Events/`, `app/Listeners/`) é o esqueleto do código Laravel. As decisões tomadas aqui guiaram a implementação da aplicação.
 
 Decisões com maior impacto na implementação:
 - **Service Layer** → controllers serão criados enxutos desde o início
