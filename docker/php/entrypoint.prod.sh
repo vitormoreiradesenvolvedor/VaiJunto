@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+echo "[VaiJunto] Descobrindo pacotes Laravel..."
+php artisan package:discover --ansi
+
 echo "[VaiJunto] Aguardando banco de dados..."
 until php artisan db:monitor --databases=pgsql 2>/dev/null || php -r "
     \$host = getenv('DB_HOST') ?: 'localhost';
