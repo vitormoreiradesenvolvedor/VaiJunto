@@ -13,7 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
     )
     ->withMiddleware(function (Middleware $middleware) {
-$middleware->alias([
+        $middleware->trustProxies(at: '*');
+        $middleware->alias([
             'ufla' => \App\Http\Middleware\EnsureUflaEmail::class,
         ]);
     })

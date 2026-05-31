@@ -37,14 +37,23 @@ class GoogleController extends Controller
                 ->with('error', 'unauthorized_domain');
         }
 
-        $user = User::updateOrCreate(
-            ['email' => $email],
-            [
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            $user = User::create([
+                'email'  => $email,
                 'name'   => $socialUser->getName(),
                 'avatar' => $socialUser->getAvatar(),
                 'role'   => 'passenger',
-            ]
-        );
+            ]);
+        } else {
+            // Preserva avatar customizado (upload local); atualiza só se ainda for o do Google
+            $updates = ['name' => $socialUser->getName()];
+            if (!str_starts_with($user->avatar ?? '', '/storage/')) {
+                $updates['avatar'] = $socialUser->getAvatar();
+            }
+            $user->update($updates);
+        }
 
         Auth::login($user);
 
