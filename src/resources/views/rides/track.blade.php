@@ -284,7 +284,7 @@ async function initTrackMap() {
 
 async function drawTrackRoute(from, to, color = "#2563EB") {
     try {
-        const { DirectionsService, DirectionsRenderer } = await google.maps.importLibrary("routes");
+        const { DirectionsService, DirectionsRenderer, TravelMode } = await google.maps.importLibrary("routes");
         if (!window.trackRenderer) {
             window.trackRenderer = new DirectionsRenderer({
                 map: window.trackMap,
@@ -299,7 +299,7 @@ async function drawTrackRoute(from, to, color = "#2563EB") {
         }
         const result = await new DirectionsService().route({
             origin: from, destination: to,
-            travelMode: google.maps.TravelMode.DRIVING,
+            travelMode: TravelMode.DRIVING,
         });
         window.trackRoutePoints = result.routes[0].overview_path;
         window.trackRenderer.setDirections(result);
