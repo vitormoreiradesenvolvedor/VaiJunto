@@ -169,7 +169,7 @@
 (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})
 ({key: "{{ $mapsKey }}", v: "weekly"});
 
-let driveMap, driverMarker, routePolyline;
+let driveMap, driverMarker, driveRenderer;
 let routePoints     = [];   // pontos da rota atual (overview_path)
 let lastRerouteTime = 0;
 const REROUTE_COOLDOWN  = 20000; // ms entre recálculos
@@ -237,18 +237,26 @@ async function initDriveMap() {
 }
 
 async function drawRoute(from, to, color = "#2563EB") {
-    if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
+    if (!driveRenderer) {
+        driveRenderer = new google.maps.DirectionsRenderer({
+            map: driveMap,
+            suppressMarkers: true,
+            preserveViewport: true,
+            polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9 },
+        });
+    } else {
+        driveRenderer.setOptions({
+            polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9 },
+        });
+    }
 
     try {
         const result = await new google.maps.DirectionsService().route({
             origin: from, destination: to,
             travelMode: google.maps.TravelMode.DRIVING,
         });
-        routePoints   = result.routes[0].overview_path;
-        routePolyline = new google.maps.Polyline({
-            path: routePoints,
-            strokeColor: color, strokeWeight: 5, strokeOpacity: 0.85, map: driveMap,
-        });
+        routePoints = result.routes[0].overview_path;
+        driveRenderer.setDirections(result);
     } catch { /* rota indisponível */ }
 }
 

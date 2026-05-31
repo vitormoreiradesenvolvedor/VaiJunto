@@ -33,8 +33,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/mode/{mode}', function (string $mode) {
         abort_if(!in_array($mode, ['passenger', 'driver']), 422);
         session(['user_mode' => $mode]);
-        return back();
+        return redirect()->route('dashboard');
     })->name('mode.set');
+
+    Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar');
 
     // Caronas
     Route::get('/rides/create', [RideController::class, 'create'])->name('rides.create');
