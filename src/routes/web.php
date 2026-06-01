@@ -38,6 +38,9 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar');
 
+    // Proxy server-side para Directions API (evita restrições de referrer do navegador)
+    Route::get('/api/directions', [RideController::class, 'directions'])->name('rides.directions');
+
     // Caronas
     Route::get('/rides/create', [RideController::class, 'create'])->name('rides.create');
     Route::post('/rides/request', [RideController::class, 'store']);
