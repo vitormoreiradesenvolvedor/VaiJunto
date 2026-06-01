@@ -237,28 +237,47 @@ class RideController extends Controller
     {
         $request->validate(['origin' => 'required|string', 'destination' => 'required|string']);
 
+        $origin      = $request->query('origin');      // "lat,lng"
+        $destination = $request->query('destination'); // "lat,lng"
+
+        // Tenta Google Directions API
         $key = config('services.google.maps_key');
-        if (!$key) {
-            return response()->json(['error' => 'KEY_MISSING'], 503);
+        if ($key) {
+            try {
+                $resp = Http::timeout(8)->get('https://maps.googleapis.com/maps/api/directions/json', [
+                    'origin'      => $origin,
+                    'destination' => $destination,
+                    'mode'        => 'driving',
+                    'language'    => 'pt-BR',
+                    'key'         => $key,
+                ]);
+                $data = $resp->json();
+                if (($data['status'] ?? '') === 'OK' && !empty($data['routes'])) {
+                    return response()->json([
+                        'path' => $this->decodePolyline($data['routes'][0]['overview_polyline']['points']),
+                    ]);
+                }
+            } catch (\Throwable) { /* timeout ou rede — tenta fallback */ }
         }
 
-        $response = Http::timeout(8)->get('https://maps.googleapis.com/maps/api/directions/json', [
-            'origin'      => $request->query('origin'),
-            'destination' => $request->query('destination'),
-            'mode'        => 'driving',
-            'language'    => 'pt-BR',
-            'key'         => $key,
-        ]);
+        // Fallback: OSRM (roteamento open-source, sem custo, mesmo formato de polyline)
+        [$oLat, $oLng] = array_pad(explode(',', $origin), 2, '0');
+        [$dLat, $dLng] = array_pad(explode(',', $destination), 2, '0');
 
-        $data = $response->json();
+        try {
+            $osrm = Http::timeout(8)->get(
+                "https://router.project-osrm.org/route/v1/driving/{$oLng},{$oLat};{$dLng},{$dLat}",
+                ['overview' => 'full', 'geometries' => 'polyline']
+            );
+            $od = $osrm->json();
+            if (($od['code'] ?? '') === 'Ok' && !empty($od['routes'])) {
+                return response()->json([
+                    'path' => $this->decodePolyline($od['routes'][0]['geometry']),
+                ]);
+            }
+        } catch (\Throwable) { /* OSRM indisponível */ }
 
-        if (($data['status'] ?? '') !== 'OK' || empty($data['routes'])) {
-            return response()->json(['error' => $data['status'] ?? 'NO_ROUTE'], 404);
-        }
-
-        return response()->json([
-            'path' => $this->decodePolyline($data['routes'][0]['overview_polyline']['points']),
-        ]);
+        return response()->json(['error' => 'NO_ROUTE'], 404);
     }
 
     private function decodePolyline(string $encoded): array
