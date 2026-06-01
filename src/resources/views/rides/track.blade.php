@@ -278,11 +278,11 @@ async function initTrackMap() {
         bounds.extend(origin);
         bounds.extend(dest);
         window.trackMap.fitBounds(bounds, 48);
-        await drawTrackRoute(origin, dest);
+        await drawTrackRoute(origin, dest, "#2563EB", true);
     }
 }
 
-async function drawTrackRoute(from, to, color = "#2563EB") {
+async function drawTrackRoute(from, to, color = "#2563EB", fitRoute = false) {
     try {
         const res = await fetch(
             `/api/directions?origin=${from.lat},${from.lng}&destination=${to.lat},${to.lng}`
@@ -300,6 +300,11 @@ async function drawTrackRoute(from, to, color = "#2563EB") {
             window.trackRouteLine.setPath(path);
             window.trackRouteLine.setOptions({ strokeColor: color });
         }
+        if (fitRoute) {
+            const bounds = new google.maps.LatLngBounds();
+            for (const pt of path) bounds.extend(pt);
+            window.trackMap.fitBounds(bounds, 48);
+        }
     } catch {
         if (window.trackRouteLine) { window.trackRouteLine.setMap(null); window.trackRouteLine = null; }
         if (window.trackFallbackLine) window.trackFallbackLine.setMap(null);
@@ -309,6 +314,11 @@ async function drawTrackRoute(from, to, color = "#2563EB") {
             strokeColor: color, strokeWeight: 4, strokeOpacity: 0.75, geodesic: true,
             map: window.trackMap,
         });
+        if (fitRoute) {
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(from); bounds.extend(to);
+            window.trackMap.fitBounds(bounds, 48);
+        }
     }
 }
 
