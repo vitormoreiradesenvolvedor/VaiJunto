@@ -73,11 +73,19 @@
                 <img src="{{ $req->passenger->avatar ?? '' }}"
                      onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($req->passenger->name) }}&background=2563eb&color=fff&size=40'"
                      class="w-9 h-9 rounded-full object-cover border border-gray-200">
-                <div>
+                <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-gray-800">{{ $req->passenger->name }}</p>
                     <p class="text-xs text-gray-400">{{ $req->passenger->email }}</p>
                 </div>
-                <span class="ml-auto text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full">Confirmado</span>
+                <div class="flex items-center gap-2 ml-auto flex-shrink-0">
+                    @if($req->ride)
+                    <a href="{{ route('rides.drive', $req->ride) }}"
+                       class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-lg transition">
+                        Gerenciar corrida →
+                    </a>
+                    @endif
+                    <span class="text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full">Confirmado</span>
+                </div>
             </div>
             @endforeach
         </div>
@@ -85,13 +93,12 @@
     @endif
 
     {{-- Solicitações pendentes --}}
-    @if($pending->isNotEmpty())
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
         <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Solicitações pendentes ({{ $pending->count() }})
+            Solicitações pendentes (<span id="pending-count">{{ $pending->count() }}</span>)
         </h3>
         <div class="space-y-3" id="pending-list">
-            @foreach($pending as $req)
+            @forelse($pending as $req)
             <div class="flex items-center gap-3" id="req-{{ $req->id }}">
                 <img src="{{ $req->passenger->avatar ?? '' }}"
                      onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($req->passenger->name) }}&background=e5e7eb&color=374151&size=40'"
@@ -101,26 +108,21 @@
                     <p class="text-xs text-gray-400">{{ $req->passenger->email }}</p>
                 </div>
                 <div class="flex gap-2 flex-shrink-0">
-                    <button onclick="acceptReq({{ $trip->id }}, {{ $req->id }})"
+                    <button onclick="acceptReq({{ $trip->id }}, {{ $req->id }}, this)"
                             class="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition">
                         Aceitar
                     </button>
-                    <button onclick="rejectReq({{ $trip->id }}, {{ $req->id }})"
+                    <button onclick="rejectReq({{ $trip->id }}, {{ $req->id }}, this)"
                             class="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium rounded-lg transition">
                         Recusar
                     </button>
                 </div>
             </div>
-            @endforeach
+            @empty
+            <p class="text-sm text-gray-400 text-center py-2" id="empty-msg">Nenhuma solicitação pendente.</p>
+            @endforelse
         </div>
     </div>
-    @endif
-
-    @if($pending->isEmpty() && $accepted->isEmpty())
-    <div class="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
-        Nenhum passageiro ainda. Compartilhe a viagem para receber solicitações!
-    </div>
-    @endif
 
     {{-- Cancelar viagem --}}
     @if(in_array($trip->status, ['open','full']))
@@ -169,11 +171,15 @@ async function initMap() {
     if (o) new google.maps.Marker({ map, position: o, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#16a34a", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 } });
     if (d) new google.maps.Marker({ map, position: d, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#dc2626", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 } });
     if (o && d) {
-        const b = new google.maps.LatLngBounds(); b.extend(o); b.extend(d); map.fitBounds(b, 48);
+        const b = new google.maps.LatLngBounds(); b.extend(o); b.extend(d); map.fitBounds(b, 36);
         try {
-            const r = await new google.maps.DirectionsService().route({ origin: o, destination: d, travelMode: google.maps.TravelMode.DRIVING });
-            new google.maps.Polyline({ path: r.routes[0].overview_path, strokeColor: "#2563EB", strokeWeight: 4, strokeOpacity: 0.8, map });
-        } catch {}
+            const res = await fetch(`/api/directions?origin=${o.lat},${o.lng}&destination=${d.lat},${d.lng}`);
+            if (!res.ok) throw new Error();
+            const { path } = await res.json();
+            new google.maps.Polyline({ path, strokeColor: "#2563EB", strokeWeight: 4, strokeOpacity: 0.85, map });
+        } catch {
+            new google.maps.Polyline({ path: [o, d], strokeColor: "#2563EB", strokeWeight: 3, strokeOpacity: 0.6, geodesic: true, map });
+        }
     }
 }
 initMap();
@@ -183,21 +189,86 @@ initMap();
 <script>
 const csrf = document.querySelector("meta[name='csrf-token']").content;
 
-async function acceptReq(tripId, reqId) {
-    const res = await fetch(`/trips/${tripId}/requests/${reqId}/accept`, {
-        method: "POST", headers: { "X-CSRF-TOKEN": csrf, "Accept": "application/json" },
-    });
-    if (res.ok) { location.reload(); }
-    else { const d = await res.json(); alert(d.message ?? "Erro ao aceitar."); }
+async function acceptReq(tripId, reqId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Aceitando..."; }
+    try {
+        const res = await fetch(`/trips/${tripId}/requests/${reqId}/accept`, {
+            method: "POST", headers: { "X-CSRF-TOKEN": csrf, "Accept": "application/json" },
+        });
+        if (res.ok) { location.reload(); }
+        else {
+            const d = await res.json();
+            if (btn) { btn.disabled = false; btn.textContent = "Aceitar"; }
+            alert(d.message ?? "Erro ao aceitar.");
+        }
+    } catch {
+        if (btn) { btn.disabled = false; btn.textContent = "Aceitar"; }
+    }
 }
 
-async function rejectReq(tripId, reqId) {
-    const res = await fetch(`/trips/${tripId}/requests/${reqId}/reject`, {
-        method: "POST", headers: { "X-CSRF-TOKEN": csrf, "Accept": "application/json" },
-    });
-    if (res.ok) { document.getElementById(`req-${reqId}`)?.remove(); }
-    else { alert("Erro ao recusar."); }
+async function rejectReq(tripId, reqId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Recusando..."; }
+    try {
+        const res = await fetch(`/trips/${tripId}/requests/${reqId}/reject`, {
+            method: "POST", headers: { "X-CSRF-TOKEN": csrf, "Accept": "application/json" },
+        });
+        if (res.ok) {
+            document.getElementById(`req-${reqId}`)?.remove();
+            checkEmpty();
+        } else {
+            if (btn) { btn.disabled = false; btn.textContent = "Recusar"; }
+            alert("Erro ao recusar.");
+        }
+    } catch {
+        if (btn) { btn.disabled = false; btn.textContent = "Recusar"; }
+    }
 }
+
+function checkEmpty() {
+    const list = document.getElementById("pending-list");
+    if (list && !list.querySelector('[id^="req-"]')) {
+        const counter = document.getElementById("pending-count");
+        if (counter) counter.textContent = "0";
+        if (!document.getElementById("empty-msg")) {
+            const p = document.createElement("p");
+            p.id = "empty-msg";
+            p.className = "text-sm text-gray-400 text-center py-2";
+            p.textContent = "Nenhuma solicitação pendente.";
+            list.appendChild(p);
+        }
+    }
+}
+
+// Recebe nova solicitação em tempo real
+window.addEventListener('echo:TripRequestReceived', (ev) => {
+    const e = ev.detail;
+    if (e.trip_id != {{ $trip->id }}) return;
+
+    const list  = document.getElementById("pending-list");
+    if (!list) return;
+    document.getElementById("empty-msg")?.remove();
+
+    const el = document.createElement("div");
+    el.id = `req-${e.request_id}`;
+    el.className = "flex items-center gap-3";
+    el.innerHTML = `
+        <img src="${e.passenger?.avatar ?? ''}"
+             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(e.passenger?.name ?? '?')}&background=e5e7eb&color=374151&size=40'"
+             class="w-9 h-9 rounded-full object-cover border border-gray-200">
+        <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-800 truncate">${e.passenger?.name ?? '—'}</p>
+            <p class="text-xs text-gray-400">Solicitação nova</p>
+        </div>
+        <div class="flex gap-2 flex-shrink-0">
+            <button onclick="acceptReq({{ $trip->id }}, ${e.request_id}, this)"
+                    class="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition">Aceitar</button>
+            <button onclick="rejectReq({{ $trip->id }}, ${e.request_id}, this)"
+                    class="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium rounded-lg transition">Recusar</button>
+        </div>`;
+    list.prepend(el);
+    const counter = document.getElementById("pending-count");
+    if (counter) counter.textContent = parseInt(counter.textContent || "0") + 1;
+});
 
 @if(in_array($trip->status, ['open','full']))
 document.getElementById("cancel-btn").addEventListener("click", () => {

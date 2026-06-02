@@ -166,22 +166,23 @@ async function initMap() {
 
     async function drawRoute() {
         if (!originMarker || !destMarker) return;
+        const oPos = originMarker.getPosition();
+        const dPos = destMarker.getPosition();
+        if (routePoly) routePoly.setMap(null);
         try {
-            const result = await new google.maps.DirectionsService().route({
-                origin: originMarker.getPosition(),
-                destination: destMarker.getPosition(),
-                travelMode: google.maps.TravelMode.DRIVING,
-            });
-            if (routePoly) routePoly.setMap(null);
+            const res = await fetch(`/api/directions?origin=${oPos.lat()},${oPos.lng()}&destination=${dPos.lat()},${dPos.lng()}`);
+            if (!res.ok) throw new Error();
+            const { path } = await res.json();
+            routePoly = new google.maps.Polyline({ path, strokeColor: "#2563EB", strokeWeight: 4, strokeOpacity: 0.85, map });
+        } catch {
             routePoly = new google.maps.Polyline({
-                path: result.routes[0].overview_path,
-                strokeColor: "#2563EB", strokeWeight: 4, strokeOpacity: 0.75, map,
+                path: [{ lat: oPos.lat(), lng: oPos.lng() }, { lat: dPos.lat(), lng: dPos.lng() }],
+                strokeColor: "#2563EB", strokeWeight: 3, strokeOpacity: 0.6, geodesic: true, map,
             });
-            const b = new google.maps.LatLngBounds();
-            b.extend(originMarker.getPosition());
-            b.extend(destMarker.getPosition());
-            map.fitBounds(b, 48);
-        } catch {}
+        }
+        const b = new google.maps.LatLngBounds();
+        b.extend(oPos); b.extend(dPos);
+        map.fitBounds(b, 36);
     }
 
     function setupAutocomplete(inputId, coordsId, markerColor, onSet) {

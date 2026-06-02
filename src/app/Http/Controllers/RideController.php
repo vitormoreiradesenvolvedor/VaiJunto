@@ -80,6 +80,7 @@ class RideController extends Controller
 
         return response()->json([
             'request_status' => $rideRequest->status,
+            'scheduled_for'  => $rideRequest->scheduled_for?->toIso8601String(),
             'ride' => $ride ? [
                 'id'                   => $ride->id,
                 'status'               => $ride->status,

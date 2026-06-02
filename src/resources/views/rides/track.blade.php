@@ -11,34 +11,47 @@
     $rideStatus = $ride?->status; // pending | accepted | in_progress | completed | cancelled
 
     // Status "visual" unificado para o passageiro
+    $isScheduledFuture = $ride && $ride->status === 'accepted'
+        && $req->scheduled_for
+        && $req->scheduled_for->gt(now()->addHour());
+
     $uiStatus = match(true) {
-        $reqStatus === 'cancelled'                                    => 'cancelled',
-        $reqStatus === 'rejected'                                     => 'rejected',
-        $rideStatus === 'completed'                                   => 'completed',
-        $rideStatus === 'cancelled'                                   => 'cancelled',
-        $rideStatus === 'in_progress'                                 => 'in_progress',
-        in_array($rideStatus, ['pending','accepted']) && $ride        => 'driver_found',
-        default                                                       => 'waiting',
+        $reqStatus === 'cancelled'                                                                          => 'cancelled',
+        $reqStatus === 'rejected'                                                                           => 'rejected',
+        $rideStatus === 'completed'                                                                         => 'completed',
+        $rideStatus === 'cancelled'                                                                         => 'cancelled',
+        $rideStatus === 'in_progress'                                                                       => 'in_progress',
+        in_array($rideStatus, ['pending','accepted']) && $ride && $ride->arrived_at && !$ride->passenger_boarded_at => 'driver_arrived',
+        in_array($rideStatus, ['pending','accepted']) && $ride && $ride->passenger_boarded_at               => 'boarded_waiting',
+        in_array($rideStatus, ['pending','accepted']) && $ride && $isScheduledFuture                       => 'scheduled_confirmed',
+        in_array($rideStatus, ['pending','accepted']) && $ride                                              => 'driver_found',
+        default                                                                                             => 'waiting',
     };
 
     $statusConfig = [
-        'waiting'      => ['label' => 'Aguardando motorista',   'color' => 'yellow',  'icon' => '⏳', 'pulse' => true],
-        'driver_found' => ['label' => 'Motorista a caminho!',   'color' => 'blue',    'icon' => '🚗', 'pulse' => true],
-        'in_progress'  => ['label' => 'Em andamento',           'color' => 'green',   'icon' => '📍', 'pulse' => true],
-        'completed'    => ['label' => 'Viagem concluída',       'color' => 'emerald', 'icon' => '✅', 'pulse' => false],
-        'cancelled'    => ['label' => 'Carona cancelada',       'color' => 'gray',    'icon' => '✖',  'pulse' => false],
-        'rejected'     => ['label' => 'Solicitação recusada',   'color' => 'red',     'icon' => '✖',  'pulse' => false],
+        'waiting'             => ['label' => 'Aguardando motorista',            'color' => 'yellow',  'icon' => '⏳', 'pulse' => true],
+        'driver_found'        => ['label' => 'Motorista a caminho!',            'color' => 'blue',    'icon' => '🚗', 'pulse' => true],
+        'scheduled_confirmed' => ['label' => 'Viagem confirmada!',              'color' => 'indigo',  'icon' => '📅', 'pulse' => false],
+        'driver_arrived'      => ['label' => 'Motorista chegou!',               'color' => 'orange',  'icon' => '📍', 'pulse' => true],
+        'boarded_waiting'     => ['label' => 'Embarcado! Aguardando início...', 'color' => 'purple',  'icon' => '✅', 'pulse' => true],
+        'in_progress'         => ['label' => 'Em andamento',                    'color' => 'green',   'icon' => '📍', 'pulse' => true],
+        'completed'           => ['label' => 'Viagem concluída',                'color' => 'emerald', 'icon' => '✅', 'pulse' => false],
+        'cancelled'           => ['label' => 'Carona cancelada',                'color' => 'gray',    'icon' => '✖',  'pulse' => false],
+        'rejected'            => ['label' => 'Solicitação recusada',            'color' => 'red',     'icon' => '✖',  'pulse' => false],
     ];
 
     $s = $statusConfig[$uiStatus];
 
     $colorMap = [
-        'yellow'  => ['bg' => 'bg-yellow-50',  'border' => 'border-yellow-300', 'text' => 'text-yellow-800',  'dot' => 'bg-yellow-400'],
-        'blue'    => ['bg' => 'bg-blue-50',    'border' => 'border-blue-300',   'text' => 'text-blue-800',    'dot' => 'bg-blue-500'],
-        'green'   => ['bg' => 'bg-green-50',   'border' => 'border-green-300',  'text' => 'text-green-800',   'dot' => 'bg-green-500'],
-        'emerald' => ['bg' => 'bg-emerald-50', 'border' => 'border-emerald-300','text' => 'text-emerald-800', 'dot' => 'bg-emerald-500'],
-        'gray'    => ['bg' => 'bg-gray-100',   'border' => 'border-gray-300',   'text' => 'text-gray-600',    'dot' => 'bg-gray-400'],
-        'red'     => ['bg' => 'bg-red-50',     'border' => 'border-red-300',    'text' => 'text-red-700',     'dot' => 'bg-red-500'],
+        'yellow'  => ['bg' => 'bg-yellow-50',  'border' => 'border-yellow-300',  'text' => 'text-yellow-800',  'dot' => 'bg-yellow-400'],
+        'blue'    => ['bg' => 'bg-blue-50',    'border' => 'border-blue-300',    'text' => 'text-blue-800',    'dot' => 'bg-blue-500'],
+        'indigo'  => ['bg' => 'bg-indigo-50',  'border' => 'border-indigo-300',  'text' => 'text-indigo-800',  'dot' => 'bg-indigo-500'],
+        'orange'  => ['bg' => 'bg-orange-50',  'border' => 'border-orange-300',  'text' => 'text-orange-800',  'dot' => 'bg-orange-500'],
+        'purple'  => ['bg' => 'bg-purple-50',  'border' => 'border-purple-300',  'text' => 'text-purple-800',  'dot' => 'bg-purple-500'],
+        'green'   => ['bg' => 'bg-green-50',   'border' => 'border-green-300',   'text' => 'text-green-800',   'dot' => 'bg-green-500'],
+        'emerald' => ['bg' => 'bg-emerald-50', 'border' => 'border-emerald-300', 'text' => 'text-emerald-800', 'dot' => 'bg-emerald-500'],
+        'gray'    => ['bg' => 'bg-gray-100',   'border' => 'border-gray-300',    'text' => 'text-gray-600',    'dot' => 'bg-gray-400'],
+        'red'     => ['bg' => 'bg-red-50',     'border' => 'border-red-300',     'text' => 'text-red-700',     'dot' => 'bg-red-500'],
     ];
     $c = $colorMap[$s['color']];
 
@@ -78,6 +91,12 @@
             <p class="text-xs {{ $c['text'] }} opacity-75 mt-0.5">Notificamos os motoristas disponíveis. Atualizando automaticamente...</p>
             @elseif($uiStatus === 'driver_found')
             <p class="text-xs {{ $c['text'] }} opacity-75 mt-0.5">Um motorista aceitou sua solicitação.</p>
+            @elseif($uiStatus === 'scheduled_confirmed')
+            <p class="text-xs {{ $c['text'] }} opacity-75 mt-0.5">O motorista sairá na data agendada. Você será notificado.</p>
+            @elseif($uiStatus === 'driver_arrived')
+            <p class="text-xs {{ $c['text'] }} opacity-75 mt-0.5">Confirme que você entrou no veículo.</p>
+            @elseif($uiStatus === 'boarded_waiting')
+            <p class="text-xs {{ $c['text'] }} opacity-75 mt-0.5">O motorista vai iniciar a viagem em breve.</p>
             @endif
         </div>
     </div>
@@ -121,9 +140,9 @@
         </div>
     </div>
 
-    {{-- Card do motorista (visível quando driver_found ou in_progress) --}}
+    {{-- Card do motorista (visível quando ride foi aceita) --}}
     <div id="driver-card"
-         class="{{ in_array($uiStatus, ['driver_found','in_progress']) ? '' : 'hidden' }} bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+         class="{{ in_array($uiStatus, ['driver_found','scheduled_confirmed','driver_arrived','boarded_waiting','in_progress']) ? '' : 'hidden' }} bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
         <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Motorista</h3>
         <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
              id="driver-card-inner"
@@ -277,7 +296,7 @@ async function initTrackMap() {
         const bounds = new google.maps.LatLngBounds();
         bounds.extend(origin);
         bounds.extend(dest);
-        window.trackMap.fitBounds(bounds, 48);
+        window.trackMap.fitBounds(bounds, 36);
         await drawTrackRoute(origin, dest, "#2563EB", true);
     }
 }
@@ -303,7 +322,7 @@ async function drawTrackRoute(from, to, color = "#2563EB", fitRoute = false) {
         if (fitRoute) {
             const bounds = new google.maps.LatLngBounds();
             for (const pt of path) bounds.extend(pt);
-            window.trackMap.fitBounds(bounds, 48);
+            window.trackMap.fitBounds(bounds, 36);
         }
     } catch {
         if (window.trackRouteLine) { window.trackRouteLine.setMap(null); window.trackRouteLine = null; }
@@ -317,7 +336,7 @@ async function drawTrackRoute(from, to, color = "#2563EB", fitRoute = false) {
         if (fitRoute) {
             const bounds = new google.maps.LatLngBounds();
             bounds.extend(from); bounds.extend(to);
-            window.trackMap.fitBounds(bounds, 48);
+            window.trackMap.fitBounds(bounds, 36);
         }
     }
 }
@@ -362,13 +381,13 @@ function fitAllTrackRoute() {
     }
     const pos = window.carMarker?.getPosition?.();
     if (pos) bounds.extend(pos);
-    if (!bounds.isEmpty()) window.trackMap.fitBounds(bounds, 48);
+    if (!bounds.isEmpty()) window.trackMap.fitBounds(bounds, 36);
 }
 
 function startTrackAutoZoom() {
     if (trackAutoZoomTimer) return;
     fitAllTrackRoute();
-    trackAutoZoomTimer = setInterval(fitAllTrackRoute, 10000);
+    trackAutoZoomTimer = setInterval(fitAllTrackRoute, 5000);
 }
 
 function expandTrackMap() {
@@ -493,6 +512,10 @@ function applyStatus(data) {
         boardedUrl = `/rides/${data.ride.id}/boarded`;
     }
 
+    // Verifica se a data de partida é mais de 1h no futuro
+    const scheduledFor = data.scheduled_for ? new Date(data.scheduled_for) : null;
+    const isScheduledFuture = scheduledFor && (scheduledFor - Date.now()) > 60 * 60 * 1000;
+
     let ui;
     if      (reqStatus === "cancelled")                                                               ui = "cancelled";
     else if (reqStatus === "rejected")                                                                ui = "rejected";
@@ -501,6 +524,7 @@ function applyStatus(data) {
     else if (rideStatus === "in_progress")                                                            ui = "in_progress";
     else if (rideStatus && ["pending","accepted"].includes(rideStatus) && passengerBoarded)           ui = "boarded_waiting";
     else if (rideStatus && ["pending","accepted"].includes(rideStatus) && driverArrived)              ui = "driver_arrived";
+    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && isScheduledFuture)          ui = "scheduled_confirmed";
     else if (rideStatus && ["pending","accepted"].includes(rideStatus))                               ui = "driver_found";
     else                                                                                              ui = "waiting";
 
@@ -542,19 +566,21 @@ function updateBoardSection(ride) {
 }
 
 const BANNER_CONFIG = {
-    waiting:        { label: "⏳ Aguardando motorista",              sub: "Notificamos os motoristas disponíveis. Atualizando automaticamente...", color: "yellow",  pulse: true  },
-    driver_found:   { label: "🚗 Motorista a caminho!",              sub: "Um motorista aceitou sua solicitação.",                                  color: "blue",    pulse: true  },
-    driver_arrived: { label: "📍 Motorista chegou!",                 sub: "Confirme que você entrou no veículo.",                                   color: "orange",  pulse: true  },
-    boarded_waiting:{ label: "✅ Embarcado! Aguardando início...",   sub: "O motorista vai iniciar a viagem em breve.",                             color: "purple",  pulse: true  },
-    in_progress:    { label: "📍 Em andamento",                      sub: "",                                                                       color: "green",   pulse: true  },
-    completed:      { label: "✅ Viagem concluída",                  sub: "",                                                                       color: "emerald", pulse: false },
-    cancelled:      { label: "✖ Carona cancelada",                  sub: "",                                                                       color: "gray",    pulse: false },
-    rejected:       { label: "✖ Solicitação recusada",              sub: "",                                                                       color: "red",     pulse: false },
+    waiting:             { label: "⏳ Aguardando motorista",              sub: "Notificamos os motoristas disponíveis. Atualizando automaticamente...", color: "yellow",  pulse: true  },
+    driver_found:        { label: "🚗 Motorista a caminho!",              sub: "Um motorista aceitou sua solicitação.",                                  color: "blue",    pulse: true  },
+    scheduled_confirmed: { label: "📅 Viagem confirmada!",               sub: "O motorista sairá na data agendada. Você será notificado.",              color: "indigo",  pulse: false },
+    driver_arrived:      { label: "📍 Motorista chegou!",                sub: "Confirme que você entrou no veículo.",                                   color: "orange",  pulse: true  },
+    boarded_waiting:     { label: "✅ Embarcado! Aguardando início...",   sub: "O motorista vai iniciar a viagem em breve.",                             color: "purple",  pulse: true  },
+    in_progress:         { label: "📍 Em andamento",                     sub: "",                                                                       color: "green",   pulse: true  },
+    completed:           { label: "✅ Viagem concluída",                 sub: "",                                                                       color: "emerald", pulse: false },
+    cancelled:           { label: "✖ Carona cancelada",                  sub: "",                                                                       color: "gray",    pulse: false },
+    rejected:            { label: "✖ Solicitação recusada",              sub: "",                                                                       color: "red",     pulse: false },
 };
 
 const COLOR_MAP = {
     yellow:  { bg: "bg-yellow-50",  border: "border-yellow-300",  text: "text-yellow-800",  dot: "bg-yellow-400"  },
     blue:    { bg: "bg-blue-50",    border: "border-blue-300",    text: "text-blue-800",    dot: "bg-blue-500"    },
+    indigo:  { bg: "bg-indigo-50",  border: "border-indigo-300",  text: "text-indigo-800",  dot: "bg-indigo-500"  },
     orange:  { bg: "bg-orange-50",  border: "border-orange-300",  text: "text-orange-800",  dot: "bg-orange-500"  },
     purple:  { bg: "bg-purple-50",  border: "border-purple-300",  text: "text-purple-800",  dot: "bg-purple-500"  },
     green:   { bg: "bg-green-50",   border: "border-green-300",   text: "text-green-800",   dot: "bg-green-500"   },
@@ -590,7 +616,7 @@ function updateBanner(ui) {
 
 function updateDriverCard(ride) {
     const card = document.getElementById("driver-card");
-    if (!ride || !["driver_found","driver_arrived","boarded_waiting","in_progress"].includes(currentStatus)) {
+    if (!ride || !["driver_found","scheduled_confirmed","driver_arrived","boarded_waiting","in_progress"].includes(currentStatus)) {
         card.classList.add("hidden"); return;
     }
     card.classList.remove("hidden");

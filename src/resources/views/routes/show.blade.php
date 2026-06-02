@@ -99,11 +99,11 @@
                     <p class="text-xs text-gray-400">Para {{ $req->scheduled_for->format('d/m H:i') }}</p>
                 </div>
                 <div class="flex gap-2 flex-shrink-0">
-                    <button onclick="acceptReq({{ $route->id }}, {{ $req->id }})"
+                    <button onclick="acceptReq({{ $route->id }}, {{ $req->id }}, this)"
                             class="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition">
                         Aceitar
                     </button>
-                    <button onclick="rejectReq({{ $route->id }}, {{ $req->id }})"
+                    <button onclick="rejectReq({{ $route->id }}, {{ $req->id }}, this)"
                             class="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium rounded-lg transition">
                         Recusar
                     </button>
@@ -157,14 +157,15 @@ async function initMap() {
 
     if (origin && dest) {
         const b = new google.maps.LatLngBounds();
-        b.extend(origin); b.extend(dest); map.fitBounds(b, 48);
+        b.extend(origin); b.extend(dest); map.fitBounds(b, 36);
         try {
-            const r = await new google.maps.DirectionsService().route({
-                origin, destination: dest, travelMode: google.maps.TravelMode.DRIVING,
-            });
-            new google.maps.Polyline({ path: r.routes[0].overview_path,
-                strokeColor: "#2563EB", strokeWeight: 4, strokeOpacity: 0.75, map });
-        } catch {}
+            const res = await fetch(`/api/directions?origin=${origin.lat},${origin.lng}&destination=${dest.lat},${dest.lng}`);
+            if (!res.ok) throw new Error();
+            const { path } = await res.json();
+            new google.maps.Polyline({ path, strokeColor: "#2563EB", strokeWeight: 4, strokeOpacity: 0.85, map });
+        } catch {
+            new google.maps.Polyline({ path: [origin, dest], strokeColor: "#2563EB", strokeWeight: 3, strokeOpacity: 0.6, geodesic: true, map });
+        }
     }
 }
 initMap();
@@ -175,20 +176,36 @@ initMap();
 const csrf = document.querySelector("meta[name='csrf-token']").content;
 let routeStatus = "{{ $route->status }}";
 
-async function acceptReq(routeId, reqId) {
-    const res = await fetch(`/routes/${routeId}/requests/${reqId}/accept`, {
-        method: "POST", headers: { "X-CSRF-TOKEN": csrf, "Accept": "application/json" },
-    });
-    if (res.ok) { document.getElementById(`req-${reqId}`)?.remove(); checkEmpty(); }
-    else { alert("Erro ao aceitar."); }
+async function acceptReq(routeId, reqId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Aceitando..."; }
+    try {
+        const res = await fetch(`/routes/${routeId}/requests/${reqId}/accept`, {
+            method: "POST", headers: { "X-CSRF-TOKEN": csrf, "Accept": "application/json" },
+        });
+        if (res.ok) { document.getElementById(`req-${reqId}`)?.remove(); checkEmpty(); }
+        else {
+            if (btn) { btn.disabled = false; btn.textContent = "Aceitar"; }
+            alert("Erro ao aceitar.");
+        }
+    } catch {
+        if (btn) { btn.disabled = false; btn.textContent = "Aceitar"; }
+    }
 }
 
-async function rejectReq(routeId, reqId) {
-    const res = await fetch(`/routes/${routeId}/requests/${reqId}/reject`, {
-        method: "POST", headers: { "X-CSRF-TOKEN": csrf, "Accept": "application/json" },
-    });
-    if (res.ok) { document.getElementById(`req-${reqId}`)?.remove(); checkEmpty(); }
-    else { alert("Erro ao recusar."); }
+async function rejectReq(routeId, reqId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Recusando..."; }
+    try {
+        const res = await fetch(`/routes/${routeId}/requests/${reqId}/reject`, {
+            method: "POST", headers: { "X-CSRF-TOKEN": csrf, "Accept": "application/json" },
+        });
+        if (res.ok) { document.getElementById(`req-${reqId}`)?.remove(); checkEmpty(); }
+        else {
+            if (btn) { btn.disabled = false; btn.textContent = "Recusar"; }
+            alert("Erro ao recusar.");
+        }
+    } catch {
+        if (btn) { btn.disabled = false; btn.textContent = "Recusar"; }
+    }
 }
 
 function checkEmpty() {
@@ -245,9 +262,9 @@ window.addEventListener('echo:NewRideRequestForDriver', (ev) => {
             <p class="text-xs text-gray-400">Solicitação nova</p>
         </div>
         <div class="flex gap-2 flex-shrink-0">
-            <button onclick="acceptReq({{ $route->id }}, ${e.id})"
+            <button onclick="acceptReq({{ $route->id }}, ${e.id}, this)"
                     class="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition">Aceitar</button>
-            <button onclick="rejectReq({{ $route->id }}, ${e.id})"
+            <button onclick="rejectReq({{ $route->id }}, ${e.id}, this)"
                     class="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium rounded-lg transition">Recusar</button>
         </div>`;
     list.prepend(el);
