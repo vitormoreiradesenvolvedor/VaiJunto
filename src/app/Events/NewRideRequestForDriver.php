@@ -6,10 +6,10 @@ use App\Models\RideRequest;
 use App\Models\User;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Queue\SerializesModels;
 
-class NewRideRequestForDriver implements ShouldBroadcastNow
+class NewRideRequestForDriver implements ShouldBroadcast
 {
     use SerializesModels;
 
