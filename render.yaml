@@ -9,6 +9,7 @@ services:
     name: vaijunto-redis
     plan: free
     maxmemoryPolicy: noeviction
+    ipAllowList: []
 
   - type: web
     name: vaijunto-app
@@ -101,7 +102,7 @@ services:
     runtime: docker
     dockerfilePath: ./docker/php/Dockerfile.prod
     dockerContext: .
-    startCommand: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+    dockerCommand: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
     envVars:
       - key: APP_NAME
         value: VaiJunto
@@ -161,7 +162,7 @@ services:
     runtime: docker
     dockerfilePath: ./docker/php/Dockerfile.prod
     dockerContext: .
-    startCommand: php artisan reverb:start --host=0.0.0.0 --port=8000
+    dockerCommand: php artisan reverb:start --host=0.0.0.0 --port=8000
     envVars:
       - key: APP_NAME
         value: VaiJunto
