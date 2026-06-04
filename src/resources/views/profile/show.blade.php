@@ -21,10 +21,22 @@
 
     {{-- Card de identidade --}}
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4">
-        <img src="{{ $user->avatar ?? '' }}"
-             onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&background=2563eb&color=fff&size=80'"
-             alt="Avatar"
-             class="w-16 h-16 rounded-full object-cover border-2 border-blue-100 flex-shrink-0">
+        <div class="relative flex-shrink-0">
+            <img src="{{ $user->avatar ?? '' }}"
+                 onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&background=2563eb&color=fff&size=80'"
+                 alt="Avatar"
+                 id="avatar-preview"
+                 class="w-16 h-16 rounded-full object-cover border-2 border-blue-100">
+            @if($isOwnProfile)
+            <button onclick="document.getElementById('avatar-modal').classList.remove('hidden')"
+                    class="absolute -bottom-1 -right-1 w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center shadow-md hover:bg-blue-700 transition border-2 border-white"
+                    title="Alterar foto">
+                <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 16H9v-3z"/>
+                </svg>
+            </button>
+            @endif
+        </div>
         <div class="flex-1 min-w-0">
             <p class="text-lg font-bold text-gray-900 truncate">{{ $user->name }}</p>
             <p class="text-xs text-gray-400 mt-0.5">Membro desde {{ $user->created_at->format('M/Y') }}</p>
@@ -179,5 +191,61 @@
     @endif
 
 </div>
+
+@if($isOwnProfile)
+{{-- Modal de troca de foto --}}
+<div id="avatar-modal"
+     class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4"
+     onclick="if(event.target===this)document.getElementById('avatar-modal').classList.add('hidden')">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-gray-900">Alterar foto de perfil</h3>
+            <button onclick="document.getElementById('avatar-modal').classList.add('hidden')"
+                    class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+        </div>
+        <form method="POST" action="{{ route('profile.avatar') }}" enctype="multipart/form-data">
+            @csrf
+            <div class="flex flex-col items-center gap-4">
+                <img id="avatar-modal-preview"
+                     src="{{ $user->avatar ?? '' }}"
+                     onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&background=2563eb&color=fff&size=128'"
+                     class="w-24 h-24 rounded-full object-cover border-2 border-blue-100">
+                <label class="w-full cursor-pointer">
+                    <div class="flex items-center justify-center gap-2 w-full border-2 border-dashed border-blue-300 rounded-xl py-3 px-4 text-sm text-blue-600 hover:bg-blue-50 transition">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                        </svg>
+                        Escolher foto
+                    </div>
+                    <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp"
+                           class="hidden" onchange="previewAvatar(this)">
+                </label>
+                <p class="text-xs text-gray-400">JPEG, PNG ou WebP · máx. 2 MB</p>
+            </div>
+            <div class="flex gap-2 mt-5">
+                <button type="button"
+                        onclick="document.getElementById('avatar-modal').classList.add('hidden')"
+                        class="flex-1 border border-gray-300 rounded-xl py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition">
+                    Cancelar
+                </button>
+                <button type="submit"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold transition">
+                    Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function previewAvatar(input) {
+    if (!input.files?.[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('avatar-modal-preview').src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+</script>
+@endif
 
 @endsection

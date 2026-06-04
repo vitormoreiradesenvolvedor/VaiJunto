@@ -162,7 +162,7 @@ document.getElementById("seats-inc").addEventListener("click", () => {
 (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})
 ({key: "{{ $mapsKey }}", v: "weekly"});
 
-let map, originMarker, destinationMarker, routePolyline;
+let map, originMarker, destinationMarker, directionsRenderer;
 let originPlace = null, destinationPlace = null;
 let mapClickMode = "origin";
 
@@ -208,33 +208,44 @@ async function initMaps() {
     document.getElementById("mode-origin-btn").addEventListener("click", () => setMapMode("origin"));
     document.getElementById("mode-dest-btn").addEventListener("click",   () => setMapMode("destination"));
 
-    // GPS
-    document.getElementById("gps-btn").addEventListener("click", () => {
-        const statusEl = document.getElementById("gps-status");
-        if (!window.isSecureContext) {
-            statusEl.textContent = "GPS indisponível em HTTP.";
-            statusEl.classList.remove("hidden"); return;
-        }
-        if (!navigator.geolocation) { alert("Geolocalização não suportada."); return; }
-        statusEl.textContent = "Obtendo localização...";
-        statusEl.classList.remove("hidden");
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const lat = pos.coords.latitude, lng = pos.coords.longitude;
-            let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-            try {
-                const { results } = await geocoder.geocode({ location: { lat, lng } });
-                if (results?.[0]) address = results[0].formatted_address;
-            } catch {}
-            setOrigin(address, lat, lng);
-            document.getElementById("origin-input").value = address;
-            statusEl.classList.add("hidden");
-        }, (err) => {
+    // GPS — botão manual
+    document.getElementById("gps-btn").addEventListener("click", () => requestGPS(geocoder, true));
+
+    // GPS — ativação automática ao carregar (usa permissão já concedida ou solicita)
+    requestGPS(geocoder, false);
+}
+
+function requestGPS(geocoder, showStatus) {
+    const statusEl = document.getElementById("gps-status");
+    if (!window.isSecureContext) {
+        if (showStatus) { statusEl.textContent = "GPS indisponível em HTTP."; statusEl.classList.remove("hidden"); }
+        return;
+    }
+    if (!navigator.geolocation) {
+        if (showStatus) alert("Geolocalização não suportada.");
+        return;
+    }
+    if (showStatus) { statusEl.textContent = "Obtendo localização..."; statusEl.classList.remove("hidden"); }
+
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude, lng = pos.coords.longitude;
+        let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        try {
+            const { results } = await geocoder.geocode({ location: { lat, lng } });
+            if (results?.[0]) address = results[0].formatted_address;
+        } catch {}
+        setOrigin(address, lat, lng);
+        document.getElementById("origin-input").value = address;
+        statusEl.classList.add("hidden");
+        setMapMode("destination");
+    }, (err) => {
+        if (showStatus) {
             statusEl.classList.add("hidden");
             const msgs = { 1: "Permissão negada.", 2: "Localização indisponível.", 3: "Tempo esgotado." };
             statusEl.textContent = msgs[err.code] ?? "Erro ao obter localização.";
             statusEl.classList.remove("hidden");
-        }, { enableHighAccuracy: true, timeout: 10000 });
-    });
+        }
+    }, { enableHighAccuracy: true, timeout: 10000 });
 }
 
 // ── Autocomplete custom ───────────────────────────────────────────────────────
@@ -383,17 +394,21 @@ function fitMap() {
 
 async function drawRoute() {
     if (!originPlace || !destinationPlace) return;
-    if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
+    if (!directionsRenderer) {
+        directionsRenderer = new google.maps.DirectionsRenderer({
+            map,
+            suppressMarkers: true,
+            preserveViewport: true,
+            polylineOptions: { strokeColor: "#2563EB", strokeWeight: 5, strokeOpacity: 0.9 },
+        });
+    }
     try {
         const result = await new google.maps.DirectionsService().route({
             origin: { lat: originPlace.lat, lng: originPlace.lng },
             destination: { lat: destinationPlace.lat, lng: destinationPlace.lng },
             travelMode: google.maps.TravelMode.DRIVING,
         });
-        routePolyline = new google.maps.Polyline({
-            path: result.routes[0].overview_path,
-            strokeColor: "#2563EB", strokeWeight: 4, strokeOpacity: 0.8, map,
-        });
+        directionsRenderer.setDirections(result);
     } catch {}
 }
 
@@ -402,7 +417,7 @@ initMaps();
 
 @else
 <script>
-// Fallback sem Maps: inputs de texto simples com autocomplete desabilitado
+// Fallback sem Maps
 ["origin-input","destination-input"].forEach((id, i) => {
     document.getElementById(id).addEventListener("input", function () {
         const hiddenId = i === 0 ? "origin-value" : "destination-value";
@@ -410,19 +425,27 @@ initMaps();
     });
 });
 
-document.getElementById("gps-btn").addEventListener("click", () => {
+function fallbackGPS(showStatus) {
     const statusEl = document.getElementById("gps-status");
-    if (!window.isSecureContext) { statusEl.textContent = "GPS indisponível em HTTP."; statusEl.classList.remove("hidden"); return; }
-    if (!navigator.geolocation) { alert("Geolocalização não suportada."); return; }
-    statusEl.textContent = "Obtendo localização..."; statusEl.classList.remove("hidden");
+    if (!window.isSecureContext) {
+        if (showStatus) { statusEl.textContent = "GPS indisponível em HTTP."; statusEl.classList.remove("hidden"); }
+        return;
+    }
+    if (!navigator.geolocation) { if (showStatus) alert("Geolocalização não suportada."); return; }
+    if (showStatus) { statusEl.textContent = "Obtendo localização..."; statusEl.classList.remove("hidden"); }
     navigator.geolocation.getCurrentPosition(pos => {
         statusEl.classList.add("hidden");
         const val = `${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
         document.getElementById("origin-input").value  = val;
         document.getElementById("origin-value").value  = val;
         document.getElementById("origin-coords").value = val;
-    }, () => { statusEl.classList.add("hidden"); alert("Não foi possível obter a localização."); });
-});
+    }, () => { if (showStatus) { statusEl.classList.add("hidden"); alert("Não foi possível obter a localização."); } },
+    { enableHighAccuracy: true, timeout: 10000 });
+}
+
+document.getElementById("gps-btn").addEventListener("click", () => fallbackGPS(true));
+// Auto-trigger na carga da página
+fallbackGPS(false);
 </script>
 @endif
 
@@ -461,6 +484,13 @@ document.getElementById("ride-form").addEventListener("submit", async function (
         alertError.textContent = "Selecione a origem e o destino.";
         alertError.classList.remove("hidden"); return;
     }
+
+    @if($mapsKey)
+    if (payload.origin_coords === "0,0" || payload.destination_coords === "0,0") {
+        alertError.textContent = "Selecione os endereços a partir das sugestões do mapa para garantir a localização correta.";
+        alertError.classList.remove("hidden"); return;
+    }
+    @endif
 
     const btn = document.getElementById("submit-btn");
     btn.disabled = true; btn.textContent = "Enviando...";
