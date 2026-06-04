@@ -23,7 +23,7 @@ RUN mkdir -p bootstrap/cache \
         storage/framework/sessions \
         storage/framework/views \
         storage/logs \
-    && composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader \
+    && composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
