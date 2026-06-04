@@ -1,9 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -12,9 +10,9 @@ return new class extends Migration
         if (DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE ride_requests MODIFY COLUMN status ENUM('pending','accepted','rejected','cancelled','completed') NOT NULL DEFAULT 'pending'");
         } else {
-            Schema::table('ride_requests', function (Blueprint $table) {
-                $table->enum('status', ['pending', 'accepted', 'rejected', 'cancelled', 'completed'])->default('pending')->change();
-            });
+            DB::statement('ALTER TABLE ride_requests DROP CONSTRAINT IF EXISTS ride_requests_status_check');
+            DB::statement("ALTER TABLE ride_requests ALTER COLUMN status TYPE varchar(255)");
+            DB::statement("ALTER TABLE ride_requests ADD CONSTRAINT ride_requests_status_check CHECK (status IN ('pending', 'accepted', 'rejected', 'cancelled', 'completed'))");
         }
     }
 
@@ -23,9 +21,9 @@ return new class extends Migration
         if (DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE ride_requests MODIFY COLUMN status ENUM('pending','accepted','rejected','cancelled') NOT NULL DEFAULT 'pending'");
         } else {
-            Schema::table('ride_requests', function (Blueprint $table) {
-                $table->enum('status', ['pending', 'accepted', 'rejected', 'cancelled'])->default('pending')->change();
-            });
+            DB::statement('ALTER TABLE ride_requests DROP CONSTRAINT IF EXISTS ride_requests_status_check');
+            DB::statement("ALTER TABLE ride_requests ALTER COLUMN status TYPE varchar(255)");
+            DB::statement("ALTER TABLE ride_requests ADD CONSTRAINT ride_requests_status_check CHECK (status IN ('pending', 'accepted', 'rejected', 'cancelled'))");
         }
     }
 };
