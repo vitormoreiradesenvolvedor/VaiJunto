@@ -166,7 +166,7 @@ document.getElementById("seats-inc").addEventListener("click", () => {
 (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})
 ({key: "{{ $mapsKey }}", v: "weekly"});
 
-let map, originMarker, destinationMarker, directionsRenderer, fallbackLine;
+let map, originMarker, destinationMarker, routeLine, fallbackLine;
 let originPlace = null, destinationPlace = null;
 let mapClickMode = "origin";
 let gpsGranted  = null; // null=pending, true=granted, false=denied
@@ -412,25 +412,22 @@ function fitMap() {
 async function drawRoute() {
     if (!originPlace || !destinationPlace) return;
     try {
-        const { DirectionsService, DirectionsRenderer, TravelMode } = await google.maps.importLibrary("routes");
-        if (!directionsRenderer) {
-            directionsRenderer = new DirectionsRenderer({
-                map,
-                suppressMarkers: true,
-                preserveViewport: true,
-                polylineOptions: { strokeColor: "#2563EB", strokeWeight: 5, strokeOpacity: 0.9 },
-            });
-        }
+        const res = await fetch(
+            `/api/directions?origin=${originPlace.lat},${originPlace.lng}&destination=${destinationPlace.lat},${destinationPlace.lng}`
+        );
+        if (!res.ok) throw new Error("directions_error");
+        const { path } = await res.json();
         if (fallbackLine) { fallbackLine.setMap(null); fallbackLine = null; }
-        const result = await new DirectionsService().route({
-            origin:      { lat: originPlace.lat, lng: originPlace.lng },
-            destination: { lat: destinationPlace.lat, lng: destinationPlace.lng },
-            travelMode:  TravelMode.DRIVING,
-        });
-        directionsRenderer.setDirections(result);
+        if (!routeLine) {
+            routeLine = new google.maps.Polyline({
+                path, strokeColor: "#2563EB", strokeWeight: 5, strokeOpacity: 0.9,
+                geodesic: false, map,
+            });
+        } else {
+            routeLine.setPath(path);
+        }
     } catch {
-        // Directions API indisponível — desenha linha reta entre os pontos
-        if (directionsRenderer) directionsRenderer.setMap(null);
+        if (routeLine) { routeLine.setMap(null); routeLine = null; }
         if (fallbackLine) fallbackLine.setMap(null);
         fallbackLine = new google.maps.Polyline({
             path: [

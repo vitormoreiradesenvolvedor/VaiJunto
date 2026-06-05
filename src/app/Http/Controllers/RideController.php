@@ -14,6 +14,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class RideController extends Controller
 {
@@ -230,5 +231,58 @@ class RideController extends Controller
         RideCancelledByDriver::dispatch($ride);
 
         return response()->json(['message' => 'Carona cancelada.']);
+    }
+
+    public function directions(Request $request): JsonResponse
+    {
+        $request->validate(['origin' => 'required|string', 'destination' => 'required|string']);
+
+        $key = config('services.google.maps_key');
+        if (!$key) {
+            return response()->json(['error' => 'KEY_MISSING'], 503);
+        }
+
+        $response = Http::timeout(8)->get('https://maps.googleapis.com/maps/api/directions/json', [
+            'origin'      => $request->query('origin'),
+            'destination' => $request->query('destination'),
+            'mode'        => 'driving',
+            'language'    => 'pt-BR',
+            'key'         => $key,
+        ]);
+
+        $data = $response->json();
+
+        if (($data['status'] ?? '') !== 'OK' || empty($data['routes'])) {
+            return response()->json(['error' => $data['status'] ?? 'NO_ROUTE'], 404);
+        }
+
+        return response()->json([
+            'path' => $this->decodePolyline($data['routes'][0]['overview_polyline']['points']),
+        ]);
+    }
+
+    private function decodePolyline(string $encoded): array
+    {
+        $points = [];
+        $index  = 0;
+        $lat    = 0;
+        $lng    = 0;
+        $len    = strlen($encoded);
+
+        while ($index < $len) {
+            foreach ([&$lat, &$lng] as &$coord) {
+                $shift  = 0;
+                $result = 0;
+                do {
+                    $b       = ord($encoded[$index++]) - 63;
+                    $result |= ($b & 0x1f) << $shift;
+                    $shift  += 5;
+                } while ($b >= 0x20);
+                $coord += ($result & 1) ? ~($result >> 1) : ($result >> 1);
+            }
+            $points[] = ['lat' => $lat / 1e5, 'lng' => $lng / 1e5];
+        }
+
+        return $points;
     }
 }

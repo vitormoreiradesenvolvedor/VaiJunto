@@ -169,7 +169,7 @@
 (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})
 ({key: "{{ $mapsKey }}", v: "weekly"});
 
-let driveMap, driverMarker, driveRenderer, driveFallbackLine;
+let driveMap, driverMarker, driveRouteLine, driveFallbackLine;
 let routePoints     = [];   // pontos da rota atual (overview_path)
 let lastRerouteTime = 0;
 const REROUTE_COOLDOWN  = 20000; // ms entre recálculos
@@ -238,29 +238,26 @@ async function initDriveMap() {
 
 async function drawRoute(from, to, color = "#2563EB") {
     try {
-        const { DirectionsService, DirectionsRenderer, TravelMode } = await google.maps.importLibrary("routes");
-        if (!driveRenderer) {
-            driveRenderer = new DirectionsRenderer({
-                map: driveMap,
-                suppressMarkers: true,
-                preserveViewport: true,
-                polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9 },
+        const res = await fetch(
+            `/api/directions?origin=${from.lat},${from.lng}&destination=${to.lat},${to.lng}`
+        );
+        if (!res.ok) throw new Error("directions_error");
+        const { path } = await res.json();
+        routePoints = path;
+        if (driveFallbackLine) { driveFallbackLine.setMap(null); driveFallbackLine = null; }
+        if (!driveRouteLine) {
+            driveRouteLine = new google.maps.Polyline({
+                path, strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9,
+                geodesic: false, map: driveMap,
             });
         } else {
-            driveRenderer.setOptions({
-                polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9 },
-            });
+            driveRouteLine.setPath(path);
+            driveRouteLine.setOptions({ strokeColor: color });
         }
-        const result = await new DirectionsService().route({
-            origin: from, destination: to,
-            travelMode: TravelMode.DRIVING,
-        });
-        routePoints = result.routes[0].overview_path;
-        driveRenderer.setDirections(result);
     } catch {
-        // Fallback: linha reta
-        if (driveRenderer) driveRenderer.setMap(null);
+        if (driveRouteLine) { driveRouteLine.setMap(null); driveRouteLine = null; }
         if (driveFallbackLine) driveFallbackLine.setMap(null);
+        routePoints = [];
         driveFallbackLine = new google.maps.Polyline({
             path: [from, to],
             strokeColor: color, strokeWeight: 4, strokeOpacity: 0.75, geodesic: true,
@@ -285,7 +282,7 @@ function minDistToRoute(lat, lng) {
     if (!routePoints.length) return 0;
     let min = Infinity;
     for (const pt of routePoints) {
-        min = Math.min(min, haversineM(lat, lng, pt.lat(), pt.lng()));
+        min = Math.min(min, haversineM(lat, lng, pt.lat, pt.lng));
     }
     return min;
 }
