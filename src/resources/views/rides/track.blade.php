@@ -215,6 +215,7 @@
 window.trackMap           = null;
 window.carMarker          = null;
 window.trackRenderer      = null;  // DirectionsRenderer da rota atual
+window.trackFallbackLine  = null;  // Polyline de fallback
 window.trackRoutePoints   = [];    // pontos para cálculo de desvio
 window.trackLastReroute   = 0;
 window.trackDestCoords    = null;
@@ -282,27 +283,36 @@ async function initTrackMap() {
 }
 
 async function drawTrackRoute(from, to, color = "#2563EB") {
-    if (!window.trackRenderer) {
-        window.trackRenderer = new google.maps.DirectionsRenderer({
-            map: window.trackMap,
-            suppressMarkers: true,
-            preserveViewport: true,
-            polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9 },
-        });
-    } else {
-        window.trackRenderer.setOptions({
-            polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9 },
-        });
-    }
-
     try {
-        const result = await new google.maps.DirectionsService().route({
+        const { DirectionsService, DirectionsRenderer } = await google.maps.importLibrary("routes");
+        if (!window.trackRenderer) {
+            window.trackRenderer = new DirectionsRenderer({
+                map: window.trackMap,
+                suppressMarkers: true,
+                preserveViewport: true,
+                polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9 },
+            });
+        } else {
+            window.trackRenderer.setOptions({
+                polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9 },
+            });
+        }
+        const result = await new DirectionsService().route({
             origin: from, destination: to,
             travelMode: google.maps.TravelMode.DRIVING,
         });
         window.trackRoutePoints = result.routes[0].overview_path;
         window.trackRenderer.setDirections(result);
-    } catch { /* rota indisponível */ }
+    } catch {
+        // Fallback: linha reta
+        if (window.trackRenderer) window.trackRenderer.setMap(null);
+        if (window.trackFallbackLine) window.trackFallbackLine.setMap(null);
+        window.trackFallbackLine = new google.maps.Polyline({
+            path: [from, to],
+            strokeColor: color, strokeWeight: 4, strokeOpacity: 0.75, geodesic: true,
+            map: window.trackMap,
+        });
+    }
 }
 
 function haversineM(lat1, lng1, lat2, lng2) {
