@@ -47,9 +47,8 @@ class GoogleController extends Controller
                 'role'   => 'passenger',
             ]);
         } else {
-            // Preserva avatar customizado (upload local); atualiza só se ainda for o do Google
             $updates = ['name' => $socialUser->getName()];
-            if (!str_starts_with($user->avatar ?? '', '/storage/')) {
+            if (!str_starts_with($user->avatar ?? '', 'data:image/')) {
                 $updates['avatar'] = $socialUser->getAvatar();
             }
             $user->update($updates);
