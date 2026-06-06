@@ -435,6 +435,10 @@ async function drawRoute() {
         } else {
             routeLine.setPath(path);
         }
+        // Ajusta zoom para cobrir todo o trajeto real
+        const bounds = new google.maps.LatLngBounds();
+        for (const pt of path) bounds.extend(pt);
+        map.fitBounds(bounds, 48);
         statusEl.className = "hidden";
     } catch (e) {
         if (routeLine) { routeLine.setMap(null); routeLine = null; }
@@ -447,6 +451,11 @@ async function drawRoute() {
             strokeColor: "#2563EB", strokeWeight: 4, strokeOpacity: 0.75,
             geodesic: true, map,
         });
+        // Ainda ajusta zoom nos dois pontos no fallback
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend({ lat: originPlace.lat, lng: originPlace.lng });
+        bounds.extend({ lat: destinationPlace.lat, lng: destinationPlace.lng });
+        map.fitBounds(bounds, 48);
         const code = e.message && e.message !== "directions_error" ? ` (${e.message})` : "";
         statusEl.textContent = `⚠️ Rota aproximada${code}`;
         statusEl.className = "text-xs text-center mt-1 text-amber-600";
