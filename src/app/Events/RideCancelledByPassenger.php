@@ -4,10 +4,10 @@ namespace App\Events;
 
 use App\Models\Ride;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Queue\SerializesModels;
 
-class RideCancelledByPassenger implements ShouldBroadcastNow
+class RideCancelledByPassenger implements ShouldBroadcast
 {
     use SerializesModels;
 

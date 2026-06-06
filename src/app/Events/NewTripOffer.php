@@ -4,10 +4,10 @@ namespace App\Events;
 
 use App\Models\Trip;
 use Illuminate\Broadcasting\Channel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Queue\SerializesModels;
 
-class NewTripOffer implements ShouldBroadcastNow
+class NewTripOffer implements ShouldBroadcast
 {
     use SerializesModels;
 

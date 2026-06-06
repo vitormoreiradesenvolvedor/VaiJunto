@@ -194,10 +194,10 @@
         window.Echo = new Echo({
             broadcaster:        'reverb',
             key:                '{{ config("broadcasting.connections.reverb.key") }}',
-            wsHost:             window.location.hostname,
-            wsPort:             parseInt(window.location.port) || 80,
-            wssPort:            parseInt(window.location.port) || 443,
-            forceTLS:           window.location.protocol === 'https:',
+            wsHost:             '{{ config("broadcasting.connections.reverb.options.host") }}',
+            wsPort:             {{ config("broadcasting.connections.reverb.options.port", 80) }},
+            wssPort:            {{ config("broadcasting.connections.reverb.options.port", 443) }},
+            forceTLS:           {{ config("broadcasting.connections.reverb.options.scheme", "http") === "https" ? "true" : "false" }},
             enabledTransports:  ['ws', 'wss'],
             authEndpoint:       '/broadcasting/auth',
             auth: {
