@@ -2,10 +2,11 @@ FROM php:8.3-fpm-alpine
 
 RUN apk add --no-cache \
         bash curl git unzip sqlite sqlite-dev \
-        libpng-dev libzip-dev icu-dev \
+        libpng-dev libjpeg-turbo-dev libwebp-dev libzip-dev icu-dev \
         postgresql-dev \
         autoconf g++ make \
         nginx supervisor \
+    && docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install \
         pdo pdo_mysql pdo_sqlite pdo_pgsql \
         zip gd intl pcntl bcmath \
