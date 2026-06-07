@@ -12,6 +12,7 @@
 O **VaiJunto** é uma aplicação web responsiva que conecta membros da comunidade UFLA que precisam de carona com aqueles que podem oferecê-la, de forma **totalmente gratuita**.
 
 O sistema implementa um **modelo híbrido**:
+
 - **Rotas fixas recorrentes:** motoristas publicam trajetos regulares
 - **Caronas sob demanda:** passageiros solicitam caronas em tempo real
 
@@ -23,49 +24,49 @@ Membros da UFLA enfrentam dificuldades diárias de deslocamento. As alternativas
 
 ## Público-Alvo
 
-| Perfil | Descrição |
-|---|---|
-| Estudantes | Graduação e pós-graduação da UFLA |
-| Professores | Docentes de todos os departamentos |
-| Servidores | Técnicos administrativos e terceirizados com vínculo UFLA |
+| Perfil      | Descrição                                                 |
+| ----------- | --------------------------------------------------------- |
+| Estudantes  | Graduação e pós-graduação da UFLA                         |
+| Professores | Docentes de todos os departamentos                        |
+| Servidores  | Técnicos administrativos e terceirizados com vínculo UFLA |
 
 **Área de cobertura:** Lavras/MG e São Sebastião do Paraíso/MG
 
 ## Stack Tecnológica
 
-| Camada | Tecnologia |
-|---|---|
-| Backend | Laravel 11 (PHP 8.3) |
-| Frontend | Blade + Livewire + Tailwind CSS |
-| Banco de Dados | MySQL 8.0 |
-| Mapas | Google Maps API |
-| Autenticação | OAuth 2.0 com email institucional UFLA |
-| Tempo Real | Laravel Reverb (WebSockets) |
-| Deploy | Docker + Docker Compose |
+| Camada         | Tecnologia                             |
+| -------------- | -------------------------------------- |
+| Backend        | Laravel 11 (PHP 8.3)                   |
+| Frontend       | Blade + Livewire + Tailwind CSS        |
+| Banco de Dados | MySQL 8.0                              |
+| Mapas          | Google Maps API                        |
+| Autenticação   | OAuth 2.0 com email institucional UFLA |
+| Tempo Real     | Laravel Reverb (WebSockets)            |
+| Deploy         | Docker + Docker Compose                |
 
 ## Equipe
 
-| Membro | Papel |
-|---|---|
-| Gabriel Francisco Borges dos Santos | Desenvolvedor |
-| Lucas Silva Meira | Desenvolvedor |
-| Maria Luiza Santos Ferreira | Desenvolvedora |
-| Rafaella Maciel Pereira Leite | Scrum Master |
-| Vitor Moreira dos Santos | Product Owner |
+| Membro                              | Papel          |
+| ----------------------------------- | -------------- |
+| Gabriel Francisco Borges dos Santos | Desenvolvedor  |
+| Lucas Silva Meira                   | Desenvolvedor  |
+| Maria Luiza Santos Ferreira         | Desenvolvedora |
+| Rafaella Maciel Pereira Leite       | Scrum Master   |
+| Vitor Moreira dos Santos            | Product Owner  |
 
 ## Cronograma de Sprints
 
-| Sprint | Data | Foco |
-|---|---|---|
-| 1 | 04/04/2026 | Definição do problema, visão do produto e organização inicial |
-| 2 | 11/04/2026 | Levantamento e priorização de requisitos |
-| 3 | 25/04/2026 | Modelagem do sistema |
-| 4 | 02/05/2026 | Princípios de projeto e decisões de solução |
-| 5 | 09/05/2026 | Aplicação de padrões de projeto |
-| 6 | 16/05/2026 | Definição da arquitetura de software |
-| 7 | 23/05/2026 | Planejamento e documentação de testes |
-| 8 | 30/05/2026 | Consolidação, revisão e evidências finais |
-| Final | 15/06/2026 | Apresentação final |
+| Sprint | Data       | Foco                                                          |
+| ------ | ---------- | ------------------------------------------------------------- |
+| 1      | 04/04/2026 | Definição do problema, visão do produto e organização inicial |
+| 2      | 11/04/2026 | Levantamento e priorização de requisitos                      |
+| 3      | 25/04/2026 | Modelagem do sistema                                          |
+| 4      | 02/05/2026 | Princípios de projeto e decisões de solução                   |
+| 5      | 09/05/2026 | Aplicação de padrões de projeto                               |
+| 6      | 16/05/2026 | Definição da arquitetura de software                          |
+| 7      | 23/05/2026 | Planejamento e documentação de testes                         |
+| 8      | 30/05/2026 | Consolidação, revisão e evidências finais                     |
+| Final  | 15/06/2026 | Apresentação final                                            |
 
 ## Como Executar
 
