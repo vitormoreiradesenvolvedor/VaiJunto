@@ -81,7 +81,7 @@
                     @if($req->ride)
                     <a href="{{ route('rides.drive', $req->ride) }}"
                        class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-lg transition">
-                        Gerenciar corrida →
+                        ▶ Iniciar corrida →
                     </a>
                     @endif
                     <span class="text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full">Confirmado</span>
@@ -132,7 +132,9 @@
             Cancelar viagem
         </button>
         <div id="cancel-confirm" class="hidden mt-3 bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
-            <p class="text-sm text-red-700 font-medium">Cancelar a viagem notificará todos os passageiros confirmados. Continuar?</p>
+            <p class="text-sm text-red-700 font-medium">Cancelar a viagem notificará todos os passageiros confirmados.</p>
+            <textarea id="cancel-reason" rows="2" placeholder="Motivo do cancelamento (obrigatório)..."
+                      class="w-full border border-red-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none bg-white"></textarea>
             <div class="flex gap-2">
                 <button id="cancel-yes"
                         class="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 rounded-lg transition">
@@ -166,7 +168,7 @@ async function initMap() {
     const map = new Map(document.getElementById("trip-map"), {
         center: o ?? d ?? { lat: -21.2342, lng: -44.9998 }, zoom: 13,
         mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
-        zoomControl: false, gestureHandling: "cooperative",
+        rotateControl: false, zoomControl: false, gestureHandling: "cooperative",
     });
     if (o) new google.maps.Marker({ map, position: o, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#16a34a", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 } });
     if (d) new google.maps.Marker({ map, position: d, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#dc2626", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 } });
@@ -319,10 +321,14 @@ document.getElementById("cancel-no").addEventListener("click", () => {
     document.getElementById("cancel-btn").classList.remove("hidden");
 });
 document.getElementById("cancel-yes").addEventListener("click", async () => {
+    const reason = document.getElementById("cancel-reason").value.trim();
+    if (!reason) { alert("Informe o motivo do cancelamento."); return; }
     const btn = document.getElementById("cancel-yes");
     btn.disabled = true; btn.textContent = "Cancelando...";
     const res = await fetch("{{ route('trips.cancel', $trip) }}", {
-        method: "POST", headers: { "X-CSRF-TOKEN": csrf, "Accept": "application/json" },
+        method: "POST",
+        headers: { "X-CSRF-TOKEN": csrf, "Accept": "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ cancel_reason: reason }),
     });
     if (res.ok) { window.location.href = "{{ route('dashboard') }}"; }
     else { btn.disabled = false; btn.textContent = "Sim, cancelar"; alert("Erro ao cancelar."); }

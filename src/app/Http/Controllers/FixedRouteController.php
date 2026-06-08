@@ -145,12 +145,25 @@ class FixedRouteController extends Controller
     }
 
     /** Motorista encerra rota fixa permanentemente */
-    public function cancel(FixedRoute $fixedRoute): JsonResponse
+    public function cancel(FixedRoute $fixedRoute, Request $request): JsonResponse
     {
         abort_if($fixedRoute->driver_id !== auth()->id(), 403);
 
+        $reason = $request->validate(['cancel_reason' => 'required|string|min:3'])['cancel_reason'];
+
+        foreach ($fixedRoute->requests()->where('status', 'accepted')->with('ride')->get() as $req) {
+            if ($req->ride && in_array($req->ride->status, ['pending', 'accepted', 'in_progress'])) {
+                try {
+                    $this->rideService->cancel($req->ride, $reason);
+                } catch (\Throwable) {
+                    $req->ride->update(['status' => 'cancelled', 'cancel_reason' => $reason]);
+                    $req->update(['status' => 'cancelled']);
+                }
+            }
+        }
+
         $fixedRoute->update(['status' => 'cancelled']);
-        $fixedRoute->requests()->whereIn('status', ['pending'])->update(['status' => 'cancelled']);
+        $fixedRoute->requests()->whereIn('status', ['pending', 'accepted'])->update(['status' => 'cancelled']);
 
         return response()->json(['message' => 'Rota encerrada.']);
     }

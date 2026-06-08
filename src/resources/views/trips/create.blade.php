@@ -197,7 +197,7 @@ async function initMaps() {
     map = new Map(document.getElementById("map"), {
         center: { lat: -21.2342, lng: -44.9998 }, zoom: 13,
         mapTypeControl: false, streetViewControl: false,
-        fullscreenControl: false, gestureHandling: "cooperative",
+        fullscreenControl: false, rotateControl: false, gestureHandling: "cooperative",
     });
 
     const acService     = new google.maps.places.AutocompleteService();

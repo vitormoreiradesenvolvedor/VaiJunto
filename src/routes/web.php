@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/driver/pending-requests', [DashboardController::class, 'pendingRequests'])->name('driver.pending-requests');
+    Route::get('/passenger/available-offers', [DashboardController::class, 'availableOffers'])->name('passenger.available-offers');
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::get('/users/{user}/profile', [ProfileController::class, 'show'])->name('profile.user');
     Route::get('/users/{user}/reputation', [ProfileController::class, 'reputation'])->name('profile.reputation');

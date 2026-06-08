@@ -60,13 +60,27 @@ class TripController extends Controller
         ]);
     }
 
-    public function cancel(Trip $trip): JsonResponse
+    public function cancel(Trip $trip, Request $request): JsonResponse
     {
         abort_if($trip->driver_id !== auth()->id(), 403);
         abort_if(!in_array($trip->status, ['open', 'full']), 422);
 
+        $reason = $request->validate(['cancel_reason' => 'required|string|min:3'])['cancel_reason'];
+
+        // Cancel accepted rides first so passengers are notified
+        foreach ($trip->requests()->where('status', 'accepted')->with('ride')->get() as $req) {
+            if ($req->ride && in_array($req->ride->status, ['pending', 'accepted', 'in_progress'])) {
+                try {
+                    $this->rideService->cancel($req->ride, $reason);
+                } catch (\Throwable) {
+                    $req->ride->update(['status' => 'cancelled', 'cancel_reason' => $reason]);
+                    $req->update(['status' => 'cancelled']);
+                }
+            }
+        }
+
         $trip->update(['status' => 'cancelled']);
-        $trip->requests()->where('status', 'pending')->update(['status' => 'cancelled']);
+        $trip->requests()->whereIn('status', ['pending', 'accepted'])->update(['status' => 'cancelled']);
 
         return response()->json(['message' => 'Viagem cancelada.']);
     }
