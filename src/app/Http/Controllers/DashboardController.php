@@ -8,6 +8,7 @@ use App\Models\RideRequest;
 use App\Models\Trip;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -102,6 +103,57 @@ class DashboardController extends Controller
             'rideRequests', 'availableTrips', 'availableFixedRoutes', 'activeRequest',
             'myFixedRouteReqMap', 'myTripReqMap',
         ));
+    }
+
+    /** Polling: ofertas disponíveis para o passageiro (trips + rotas fixas) */
+    public function availableOffers(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+
+        $knownTripIds  = array_map('intval', explode(',', $request->query('trip_ids', '')));
+        $knownRouteIds = array_map('intval', explode(',', $request->query('route_ids', '')));
+        $knownTripIds  = array_filter($knownTripIds);
+        $knownRouteIds = array_filter($knownRouteIds);
+
+        $trips = Trip::where('status', 'open')
+            ->where('departs_at', '>', now())
+            ->where('driver_id', '!=', $user->id)
+            ->when($knownTripIds, fn ($q) => $q->whereNotIn('id', $knownTripIds))
+            ->with('driver')
+            ->withCount(['requests as accepted_count' => fn ($q) => $q->where('status', 'accepted')])
+            ->orderBy('departs_at')
+            ->limit(5)
+            ->get()
+            ->map(fn ($t) => [
+                'id'           => $t->id,
+                'origin'       => $t->origin,
+                'destination'  => $t->destination,
+                'departs_at'   => $t->departs_at->toIso8601String(),
+                'seats_total'  => $t->seats_total,
+                'seats_left'   => max(0, $t->seats_total - $t->accepted_count),
+                'driver'       => ['id' => $t->driver->id, 'name' => $t->driver->name, 'avatar' => $t->driver->avatar],
+            ]);
+
+        $routes = FixedRoute::where('status', 'active')
+            ->where('driver_id', '!=', $user->id)
+            ->when($knownRouteIds, fn ($q) => $q->whereNotIn('id', $knownRouteIds))
+            ->with('driver')
+            ->withCount(['requests as accepted_count' => fn ($q) => $q->where('status', 'accepted')])
+            ->orderBy('departure_time')
+            ->limit(5)
+            ->get()
+            ->map(fn ($r) => [
+                'id'              => $r->id,
+                'origin'          => $r->origin,
+                'destination'     => $r->destination,
+                'departure_time'  => \Carbon\Carbon::parse($r->departure_time)->format('H:i'),
+                'days_label'      => $r->days_label,
+                'available_seats' => $r->available_seats,
+                'seats_left'      => max(0, $r->available_seats - $r->accepted_count),
+                'driver'          => ['id' => $r->driver->id, 'name' => $r->driver->name, 'avatar' => $r->driver->avatar],
+            ]);
+
+        return response()->json(['trips' => $trips, 'routes' => $routes]);
     }
 
     /** Polling: lista atual de solicitações avulsas pendentes para o motorista */

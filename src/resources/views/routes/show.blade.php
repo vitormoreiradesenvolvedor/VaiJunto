@@ -80,7 +80,7 @@
                     @if($req->ride)
                     <a href="{{ route('rides.drive', $req->ride) }}"
                        class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-lg transition">
-                        Gerenciar →
+                        ▶ Iniciar corrida →
                     </a>
                     @endif
                     <span class="text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full">Confirmado</span>
@@ -141,7 +141,9 @@
             Encerrar rota permanentemente
         </button>
         <div id="cancel-route-confirm" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
-            <p class="text-sm text-red-700 font-medium">Isso encerrará a rota e cancelará todas as solicitações pendentes. Continuar?</p>
+            <p class="text-sm text-red-700 font-medium">Isso encerrará a rota e notificará passageiros confirmados.</p>
+            <textarea id="cancel-route-reason" rows="2" placeholder="Motivo do encerramento (obrigatório)..."
+                      class="w-full border border-red-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none bg-white"></textarea>
             <div class="flex gap-2">
                 <button id="cancel-route-yes"
                         onclick="cancelRoute({{ $route->id }})"
@@ -176,7 +178,7 @@ async function initMap() {
     const map = new Map(document.getElementById("route-map"), {
         center: origin ?? dest ?? { lat: -21.2342, lng: -44.9998 }, zoom: 13,
         mapTypeControl: false, streetViewControl: false,
-        fullscreenControl: false, zoomControl: false,
+        fullscreenControl: false, rotateControl: false, zoomControl: false,
         gestureHandling: "cooperative",
     });
 
@@ -273,11 +275,15 @@ async function toggleStatus(routeId) {
 }
 
 async function cancelRoute(routeId) {
+    const reason = document.getElementById('cancel-route-reason')?.value.trim();
+    if (!reason) { alert('Informe o motivo do encerramento.'); return; }
     const btn = document.getElementById('cancel-route-yes');
     if (btn) { btn.disabled = true; btn.textContent = 'Encerrando...'; }
     try {
         const res = await fetch(`/routes/${routeId}/cancel`, {
-            method: 'POST', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cancel_reason: reason }),
         });
         if (res.ok) { window.location.href = '{{ route("dashboard") }}'; }
         else {

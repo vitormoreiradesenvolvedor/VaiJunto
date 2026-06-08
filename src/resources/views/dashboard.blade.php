@@ -1274,6 +1274,94 @@ window.addEventListener('echo:NewTripOffer', (ev) => {
     }
 });
 
+// ── Polling de ofertas disponíveis (passageiro) ──────────────────────────────
+if (document.querySelector('[data-passenger-dashboard]')) {
+    const knownTripIds  = new Set([{{ collect($availableTrips ?? [])->pluck('id')->join(', ') }}]);
+    const knownRouteIds = new Set([{{ collect($availableFixedRoutes ?? [])->pluck('id')->join(', ') }}]);
+
+    async function pollAvailableOffers() {
+        try {
+            const params = new URLSearchParams({
+                trip_ids:  [...knownTripIds].join(','),
+                route_ids: [...knownRouteIds].join(','),
+            });
+            const res = await fetch(`/passenger/available-offers?${params}`, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return;
+            const { trips, routes } = await res.json();
+
+            for (const t of trips) {
+                if (knownTripIds.has(t.id)) continue;
+                knownTripIds.add(t.id);
+                const list  = document.getElementById('trips-list');
+                const empty = document.getElementById('trips-empty');
+                if (empty) empty.remove();
+                if (!list) continue;
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl border border-blue-200 shadow-sm px-5 py-4';
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <img src="${t.driver?.avatar ?? ''}"
+                                     onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(t.driver?.name ?? '?')}&background=2563eb&color=fff&size=32'"
+                                     class="w-7 h-7 rounded-full border border-gray-200">
+                                <span class="text-sm font-medium text-gray-700">${t.driver?.name ?? '—'}</span>
+                            </div>
+                            <p class="text-sm font-semibold text-gray-900 truncate">
+                                ${t.origin} <span class="text-gray-400 mx-1 font-normal">→</span> ${t.destination}
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                ${new Date(t.departs_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+                                &nbsp;·&nbsp; <span class="${t.seats_left > 0 ? 'text-green-600' : 'text-red-500'} font-medium">${t.seats_left} vaga(s)</span>
+                            </p>
+                        </div>
+                        <button onclick="joinTrip(${t.id}, this)"
+                                ${t.seats_left <= 0 ? 'disabled' : ''}
+                                class="flex-shrink-0 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+                            Entrar
+                        </button>
+                    </div>`;
+                list.prepend(card);
+            }
+
+            for (const r of routes) {
+                if (knownRouteIds.has(r.id)) continue;
+                knownRouteIds.add(r.id);
+                const container = document.querySelector('.space-y-3.mb-5');
+                if (!container) continue;
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl border border-purple-200 shadow-sm px-5 py-4';
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <img src="${r.driver?.avatar ?? ''}"
+                                     onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(r.driver?.name ?? '?')}&background=7c3aed&color=fff&size=32'"
+                                     class="w-7 h-7 rounded-full border border-gray-200">
+                                <span class="text-sm font-medium text-gray-700">${r.driver?.name ?? '—'}</span>
+                            </div>
+                            <p class="text-sm font-semibold text-gray-900 truncate">
+                                ${r.origin} <span class="text-gray-400 mx-1 font-normal">→</span> ${r.destination}
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                ${r.departure_time ?? ''} · ${r.days_label ?? ''}
+                                &nbsp;·&nbsp; <span class="${r.seats_left > 0 ? 'text-green-600' : 'text-red-500'} font-medium">${r.seats_left} vaga(s)</span>
+                            </p>
+                        </div>
+                        <button onclick="joinRoute(${r.id}, this)"
+                                ${r.seats_left <= 0 ? 'disabled' : ''}
+                                class="flex-shrink-0 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+                            Solicitar
+                        </button>
+                    </div>`;
+                container.prepend(card);
+            }
+        } catch { /* silencia erros de rede */ }
+    }
+
+    setInterval(pollAvailableOffers, 60000);
+}
+
 // ── Tabs passageiro ─────────────────────────────────────────────────────────
 function showTab(tab) {
     const panels = ['offers', 'mine'];
