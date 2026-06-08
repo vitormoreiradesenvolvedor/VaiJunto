@@ -262,11 +262,18 @@
                 dispatchEchoEvent('RideCancelledByPassenger', e);
             });
 
-        // Canal público de novas viagens
+        // Canal público de novas viagens avulsas
         Echo.channel('trips')
             .listen('.NewTripOffer', (e) => {
                 showToast(`🆕 Nova carona: ${e.origin} → ${e.destination}`, 'info');
                 dispatchEchoEvent('NewTripOffer', e);
+            });
+
+        // Canal público de novas rotas fixas
+        Echo.channel('routes')
+            .listen('.NewFixedRouteOffer', (e) => {
+                showToast(`🔄 Nova rota fixa: ${e.origin} → ${e.destination}`, 'info');
+                dispatchEchoEvent('NewFixedRouteOffer', e);
             });
     });
     </script>

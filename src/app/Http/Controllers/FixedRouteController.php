@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\NewFixedRouteOffer;
 use App\Events\NewRideRequestForDriver;
 use App\Models\FixedRoute;
 use App\Models\RideRequest;
 use App\Services\NotificationService;
+use App\Services\RideService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -13,7 +15,10 @@ use Illuminate\Http\Request;
 
 class FixedRouteController extends Controller
 {
-    public function __construct(private NotificationService $notificationService) {}
+    public function __construct(
+        private NotificationService $notificationService,
+        private RideService $rideService,
+    ) {}
 
     /** Formulário de criação (motorista) */
     public function create(): View
@@ -38,12 +43,17 @@ class FixedRouteController extends Controller
             'available_seats'    => 'required|integer|min:1|max:8',
         ]);
 
-        FixedRoute::create([
+        $fixedRoute = FixedRoute::create([
             ...$data,
             'driver_id'  => auth()->id(),
             'vehicle_id' => auth()->user()->vehicle?->id,
             'status'     => 'active',
         ]);
+
+        $fixedRoute->load('driver');
+        try {
+            NewFixedRouteOffer::dispatch($fixedRoute);
+        } catch (\Throwable) { /* broadcast failure não bloqueia */ }
 
         return redirect()->route('dashboard')
             ->with('success', 'Rota fixa criada! Passageiros poderão encontrá-la e solicitar vagas.');
@@ -55,7 +65,7 @@ class FixedRouteController extends Controller
         abort_if($fixedRoute->driver_id !== auth()->id(), 403);
 
         return view('routes.show', [
-            'route'   => $fixedRoute->load(['requests.passenger', 'vehicle']),
+            'route'   => $fixedRoute->load(['requests.passenger', 'requests.ride', 'vehicle']),
             'mapsKey' => config('services.google.maps_key'),
         ]);
     }
@@ -123,9 +133,47 @@ class FixedRouteController extends Controller
         abort_if($fixedRoute->driver_id !== auth()->id(), 403);
         abort_if($rideRequest->fixed_route_id !== $fixedRoute->id, 422);
 
-        $rideRequest->update(['status' => 'accepted']);
+        $driver = auth()->user();
+        try {
+            $this->rideService->accept($rideRequest, $driver);
+        } catch (\Throwable) {
+            // fallback: apenas atualiza status sem criar ride
+            $rideRequest->update(['status' => 'accepted']);
+        }
 
         return response()->json(['message' => 'Solicitação aceita.']);
+    }
+
+    /** Motorista encerra rota fixa permanentemente */
+    public function cancel(FixedRoute $fixedRoute): JsonResponse
+    {
+        abort_if($fixedRoute->driver_id !== auth()->id(), 403);
+
+        $fixedRoute->update(['status' => 'cancelled']);
+        $fixedRoute->requests()->whereIn('status', ['pending'])->update(['status' => 'cancelled']);
+
+        return response()->json(['message' => 'Rota encerrada.']);
+    }
+
+    /** Retorna solicitações pendentes (polling fallback) */
+    public function pendingRequests(FixedRoute $fixedRoute): JsonResponse
+    {
+        abort_if($fixedRoute->driver_id !== auth()->id(), 403);
+
+        $requests = $fixedRoute->requests()
+            ->with('passenger')
+            ->where('status', 'pending')
+            ->get()
+            ->map(fn ($r) => [
+                'id'            => $r->id,
+                'scheduled_for' => $r->scheduled_for?->toIso8601String(),
+                'passenger'     => [
+                    'name'   => $r->passenger->name,
+                    'avatar' => $r->passenger->avatar,
+                ],
+            ]);
+
+        return response()->json(['requests' => $requests]);
     }
 
     /** Motorista recusa solicitação de rota fixa */

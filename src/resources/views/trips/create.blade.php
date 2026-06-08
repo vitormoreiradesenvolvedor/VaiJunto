@@ -34,22 +34,26 @@
 
         {{-- Endereços --}}
         <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-visible">
-            <div class="flex items-center px-4 py-3 border-b border-gray-100">
-                <span class="w-3 h-3 rounded-full bg-green-500 flex-shrink-0 mr-3"></span>
+            <div class="flex items-center px-4 py-3 border-b border-gray-100 gap-2">
+                <span class="w-3 h-3 rounded-full bg-green-500 flex-shrink-0"></span>
                 <input id="origin-input" type="text" autocomplete="off"
                        placeholder="De onde você vai sair?"
                        class="flex-1 text-sm text-gray-800 outline-none placeholder-gray-400 bg-transparent min-w-0">
+                <button type="button" id="clear-trip-origin" onclick="clearTripField('origin')"
+                        class="hidden text-gray-400 hover:text-gray-600 text-base leading-none flex-shrink-0">✕</button>
             </div>
             <div class="flex items-center px-4">
                 <div class="w-3 flex justify-center mr-3">
                     <div class="w-px h-3 border-l-2 border-dashed border-gray-300"></div>
                 </div>
             </div>
-            <div class="flex items-center px-4 py-3">
-                <span class="w-3 h-3 rounded-sm bg-gray-800 flex-shrink-0 mr-3"></span>
+            <div class="flex items-center px-4 py-3 gap-2">
+                <span class="w-3 h-3 rounded-sm bg-gray-800 flex-shrink-0"></span>
                 <input id="destination-input" type="text" autocomplete="off"
                        placeholder="Para onde você vai?"
                        class="flex-1 text-sm text-gray-800 outline-none placeholder-gray-400 bg-transparent min-w-0">
+                <button type="button" id="clear-trip-dest" onclick="clearTripField('dest')"
+                        class="hidden text-gray-400 hover:text-gray-600 text-base leading-none flex-shrink-0">✕</button>
             </div>
             <input type="hidden" name="origin"             id="origin-value">
             <input type="hidden" name="origin_coords"      id="origin-coords">
@@ -122,6 +126,32 @@
 
 @push('scripts')
 <script>
+// Limpar campo de endereço
+function clearTripField(type) {
+    if (type === 'origin') {
+        document.getElementById('origin-input').value = '';
+        document.getElementById('origin-value').value = '';
+        document.getElementById('origin-coords').value = '';
+        document.getElementById('clear-trip-origin').classList.add('hidden');
+        originPlace = null;
+        if (typeof originMarker !== 'undefined' && originMarker) { originMarker.setMap(null); originMarker = null; }
+    } else {
+        document.getElementById('destination-input').value = '';
+        document.getElementById('destination-value').value = '';
+        document.getElementById('destination-coords').value = '';
+        document.getElementById('clear-trip-dest').classList.add('hidden');
+        destinationPlace = null;
+        if (typeof destinationMarker !== 'undefined' && destinationMarker) { destinationMarker.setMap(null); destinationMarker = null; }
+    }
+    if (typeof routePolyline !== 'undefined' && routePolyline) { routePolyline.setMap(null); routePolyline = null; }
+}
+document.getElementById('origin-input').addEventListener('input', () => {
+    document.getElementById('clear-trip-origin').classList.toggle('hidden', !document.getElementById('origin-input').value);
+});
+document.getElementById('destination-input').addEventListener('input', () => {
+    document.getElementById('clear-trip-dest').classList.toggle('hidden', !document.getElementById('destination-input').value);
+});
+
 // Assentos
 let seats = 3;
 document.getElementById("seats-dec").addEventListener("click", () => {
@@ -247,12 +277,14 @@ function setOrigin(address, lat, lng) {
     originPlace = { address, lat, lng };
     document.getElementById("origin-value").value  = address;
     document.getElementById("origin-coords").value = `${lat},${lng}`;
+    document.getElementById("clear-trip-origin").classList.remove("hidden");
     placeMarker("origin", { lat, lng }, "#16a34a"); fitMap(); drawRoute();
 }
 function setDestination(address, lat, lng) {
     destinationPlace = { address, lat, lng };
     document.getElementById("destination-value").value  = address;
     document.getElementById("destination-coords").value = `${lat},${lng}`;
+    document.getElementById("clear-trip-dest").classList.remove("hidden");
     placeMarker("dest", { lat, lng }, "#dc2626"); fitMap(); drawRoute();
 }
 function setMapMode(mode) {

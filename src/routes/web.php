@@ -70,6 +70,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/trips/{trip}/join', [TripController::class, 'join'])->name('trips.join');
     Route::post('/trips/{trip}/requests/{rideRequest}/accept', [TripController::class, 'acceptRequest']);
     Route::post('/trips/{trip}/requests/{rideRequest}/reject', [TripController::class, 'rejectRequest']);
+    Route::get('/trips/{trip}/pending', [TripController::class, 'pendingRequests'])->name('trips.pending');
 
     // Veículos
     Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
@@ -86,4 +87,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/routes/{fixedRoute}/requests/{rideRequest}/accept', [FixedRouteController::class, 'acceptRequest'])->name('routes.requests.accept');
     Route::post('/routes/{fixedRoute}/requests/{rideRequest}/reject', [FixedRouteController::class, 'rejectRequest'])->name('routes.requests.reject');
     Route::post('/routes/{fixedRoute}/pause', [FixedRouteController::class, 'pause']);
+    Route::post('/routes/{fixedRoute}/cancel', [FixedRouteController::class, 'cancel'])->name('routes.cancel');
+    Route::get('/routes/{fixedRoute}/pending', [FixedRouteController::class, 'pendingRequests'])->name('routes.pending');
 });

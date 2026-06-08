@@ -76,7 +76,15 @@
                     <p class="text-sm font-medium text-gray-800">{{ $req->passenger->name }}</p>
                     <p class="text-xs text-gray-400">{{ $req->scheduled_for->format('d/m H:i') }}</p>
                 </div>
-                <span class="text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full">Confirmado</span>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    @if($req->ride)
+                    <a href="{{ route('rides.drive', $req->ride) }}"
+                       class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-lg transition">
+                        Gerenciar →
+                    </a>
+                    @endif
+                    <span class="text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full">Confirmado</span>
+                </div>
             </div>
             @endforeach
         </div>
@@ -124,6 +132,29 @@
                     : 'border-green-300 text-green-600 hover:bg-green-50' }}">
         {{ $route->status === 'active' ? '⏸ Pausar rota' : '▶ Reativar rota' }}
     </button>
+
+    {{-- Encerrar rota --}}
+    <div id="cancel-route-section">
+        <button id="cancel-route-btn"
+                onclick="document.getElementById('cancel-route-confirm').classList.remove('hidden'); this.classList.add('hidden')"
+                class="w-full border border-red-300 text-red-500 hover:bg-red-50 font-medium py-2.5 rounded-xl transition text-sm">
+            Encerrar rota permanentemente
+        </button>
+        <div id="cancel-route-confirm" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+            <p class="text-sm text-red-700 font-medium">Isso encerrará a rota e cancelará todas as solicitações pendentes. Continuar?</p>
+            <div class="flex gap-2">
+                <button id="cancel-route-yes"
+                        onclick="cancelRoute({{ $route->id }})"
+                        class="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 rounded-lg transition">
+                    Sim, encerrar
+                </button>
+                <button onclick="document.getElementById('cancel-route-confirm').classList.add('hidden'); document.getElementById('cancel-route-btn').classList.remove('hidden')"
+                        class="flex-1 border border-gray-300 text-gray-600 text-sm font-medium py-2 rounded-lg hover:bg-gray-50 transition">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
 
 </div>
 
@@ -240,6 +271,60 @@ async function toggleStatus(routeId) {
     }
     btn.disabled = false;
 }
+
+async function cancelRoute(routeId) {
+    const btn = document.getElementById('cancel-route-yes');
+    if (btn) { btn.disabled = true; btn.textContent = 'Encerrando...'; }
+    try {
+        const res = await fetch(`/routes/${routeId}/cancel`, {
+            method: 'POST', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+        });
+        if (res.ok) { window.location.href = '{{ route("dashboard") }}'; }
+        else {
+            if (btn) { btn.disabled = false; btn.textContent = 'Sim, encerrar'; }
+            alert('Erro ao encerrar rota.');
+        }
+    } catch {
+        if (btn) { btn.disabled = false; btn.textContent = 'Sim, encerrar'; }
+    }
+}
+
+// Polling fallback para novas solicitações pendentes
+const knownPendingRouteIds = new Set([{{ $pending->pluck('id')->join(', ') }}]);
+async function pollRoutePending() {
+    try {
+        const res = await fetch(`{{ route('routes.pending', $route) }}`, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return;
+        const { requests } = await res.json();
+        for (const req of requests) {
+            if (!knownPendingRouteIds.has(req.id)) {
+                knownPendingRouteIds.add(req.id);
+                const list = document.getElementById('pending-list');
+                const empty = document.getElementById('empty-msg');
+                if (empty) empty.remove();
+                const el = document.createElement('div');
+                el.id = `req-${req.id}`;
+                el.className = 'flex items-center gap-3';
+                el.innerHTML = `
+                    <img src="${req.passenger?.avatar ?? ''}"
+                         onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(req.passenger?.name ?? '?')}&background=e5e7eb&color=374151&size=40'"
+                         class="w-9 h-9 rounded-full object-cover border border-gray-200 flex-shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-800 truncate">${req.passenger?.name ?? '—'}</p>
+                        <p class="text-xs text-gray-400">Solicitação nova</p>
+                    </div>
+                    <div class="flex gap-2 flex-shrink-0">
+                        <button onclick="acceptReq({{ $route->id }}, ${req.id}, this)"
+                                class="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition">Aceitar</button>
+                        <button onclick="rejectReq({{ $route->id }}, ${req.id}, this)"
+                                class="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium rounded-lg transition">Recusar</button>
+                    </div>`;
+                if (list) list.prepend(el);
+            }
+        }
+    } catch {}
+}
+setInterval(pollRoutePending, 20000);
 
 // Recebe nova solicitação em tempo real
 window.addEventListener('echo:NewRideRequestForDriver', (ev) => {
