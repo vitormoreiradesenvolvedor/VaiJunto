@@ -129,4 +129,25 @@ class TripController extends Controller
 
         return response()->json(['message' => 'Solicitação recusada.']);
     }
+
+    /** Retorna solicitações pendentes (polling fallback) */
+    public function pendingRequests(Trip $trip): JsonResponse
+    {
+        abort_if($trip->driver_id !== auth()->id(), 403);
+
+        $requests = $trip->requests()
+            ->with('passenger')
+            ->where('status', 'pending')
+            ->get()
+            ->map(fn ($r) => [
+                'id'            => $r->id,
+                'scheduled_for' => $r->scheduled_for?->toIso8601String(),
+                'passenger'     => [
+                    'name'   => $r->passenger->name,
+                    'avatar' => $r->passenger->avatar,
+                ],
+            ]);
+
+        return response()->json(['requests' => $requests]);
+    }
 }

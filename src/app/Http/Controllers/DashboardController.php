@@ -16,10 +16,10 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         if (session('user_mode', $user->role) === 'driver') {
-            // Viagens que o motorista ofereceu (abertas ou cheias, ainda não partiram)
+            // Viagens que o motorista ofereceu (abertas ou cheias, inclui as últimas 24h antes de partir)
             $myTrips = Trip::where('driver_id', $user->id)
                 ->whereIn('status', ['open', 'full'])
-                ->where('departs_at', '>', now())
+                ->where('departs_at', '>', now()->subHours(24))
                 ->withCount(['requests as pending_count' => fn ($q) => $q->where('status', 'pending')])
                 ->withCount(['requests as accepted_count' => fn ($q) => $q->where('status', 'accepted')])
                 ->orderBy('departs_at')
@@ -90,7 +90,18 @@ class DashboardController extends Controller
             ->limit(15)
             ->get();
 
-        return view('dashboard', compact('rideRequests', 'availableTrips', 'availableFixedRoutes', 'activeRequest'));
+        // Mapa de requests ativas do passageiro (para mostrar "Acompanhar" no lugar de "Solicitar")
+        $myPendingReqs = RideRequest::where('passenger_id', $user->id)
+            ->whereIn('status', ['pending', 'accepted'])
+            ->get(['id', 'fixed_route_id', 'trip_id', 'status']);
+
+        $myFixedRouteReqMap = $myPendingReqs->whereNotNull('fixed_route_id')->keyBy('fixed_route_id');
+        $myTripReqMap       = $myPendingReqs->whereNotNull('trip_id')->keyBy('trip_id');
+
+        return view('dashboard', compact(
+            'rideRequests', 'availableTrips', 'availableFixedRoutes', 'activeRequest',
+            'myFixedRouteReqMap', 'myTripReqMap',
+        ));
     }
 
     /** Polling: lista atual de solicitações avulsas pendentes para o motorista */

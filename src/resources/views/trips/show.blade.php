@@ -239,6 +239,45 @@ function checkEmpty() {
     }
 }
 
+// Polling fallback para novas solicitações pendentes
+const knownPendingTripIds = new Set([{{ $pending->pluck('id')->join(', ') }}]);
+async function pollTripPending() {
+    try {
+        const res = await fetch(`{{ route('trips.pending', $trip) }}`, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return;
+        const { requests } = await res.json();
+        for (const req of requests) {
+            if (!knownPendingTripIds.has(req.id)) {
+                knownPendingTripIds.add(req.id);
+                const list = document.getElementById('pending-list');
+                if (!list) return;
+                document.getElementById('empty-msg')?.remove();
+                const el = document.createElement('div');
+                el.id = `req-${req.id}`;
+                el.className = 'flex items-center gap-3';
+                el.innerHTML = `
+                    <img src="${req.passenger?.avatar ?? ''}"
+                         onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(req.passenger?.name ?? '?')}&background=e5e7eb&color=374151&size=40'"
+                         class="w-9 h-9 rounded-full object-cover border border-gray-200">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-800 truncate">${req.passenger?.name ?? '—'}</p>
+                        <p class="text-xs text-gray-400">Solicitação nova</p>
+                    </div>
+                    <div class="flex gap-2 flex-shrink-0">
+                        <button onclick="acceptReq({{ $trip->id }}, ${req.id}, this)"
+                                class="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition">Aceitar</button>
+                        <button onclick="rejectReq({{ $trip->id }}, ${req.id}, this)"
+                                class="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium rounded-lg transition">Recusar</button>
+                    </div>`;
+                list.prepend(el);
+                const counter = document.getElementById('pending-count');
+                if (counter) counter.textContent = parseInt(counter.textContent || '0') + 1;
+            }
+        }
+    } catch {}
+}
+setInterval(pollTripPending, 20000);
+
 // Recebe nova solicitação em tempo real
 window.addEventListener('echo:TripRequestReceived', (ev) => {
     const e = ev.detail;

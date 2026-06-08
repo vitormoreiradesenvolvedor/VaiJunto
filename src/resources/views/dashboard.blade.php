@@ -111,7 +111,10 @@ $statusLabel = [
         @if(isset($availableFixedRoutes) && $availableFixedRoutes->isNotEmpty())
         <div class="space-y-3 mb-5">
             @foreach($availableFixedRoutes as $fr)
-            @php $seatsLeft = max(0, $fr->available_seats - $fr->accepted_count); @endphp
+            @php
+                $seatsLeft = max(0, $fr->available_seats - $fr->accepted_count);
+                $myFrReq   = $myFixedRouteReqMap[$fr->id] ?? null;
+            @endphp
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex-1 min-w-0">
@@ -138,11 +141,18 @@ $statusLabel = [
                             </span>
                         </p>
                     </div>
+                    @if($myFrReq)
+                    <a href="{{ route('rides.track', $myFrReq) }}"
+                       class="flex-shrink-0 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+                        Acompanhar →
+                    </a>
+                    @else
                     <button onclick="joinRoute({{ $fr->id }}, this)"
                             {{ $seatsLeft <= 0 ? 'disabled' : '' }}
                             class="flex-shrink-0 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
                         Solicitar
                     </button>
+                    @endif
                 </div>
             </div>
             @endforeach
@@ -162,7 +172,10 @@ $statusLabel = [
         @if(isset($availableTrips) && $availableTrips->isNotEmpty())
         <div class="space-y-3 mb-2" id="trips-list">
             @foreach($availableTrips as $trip)
-            @php $seatsLeft = $trip->seats_total - $trip->accepted_count; @endphp
+            @php
+                $seatsLeft  = $trip->seats_total - $trip->accepted_count;
+                $myTripReq  = $myTripReqMap[$trip->id] ?? null;
+            @endphp
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex-1 min-w-0">
@@ -188,11 +201,18 @@ $statusLabel = [
                             </span>
                         </p>
                     </div>
+                    @if($myTripReq)
+                    <a href="{{ route('rides.track', $myTripReq) }}"
+                       class="flex-shrink-0 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+                        Acompanhar →
+                    </a>
+                    @else
                     <button onclick="joinTrip({{ $trip->id }}, this)"
                             {{ $seatsLeft <= 0 ? 'disabled' : '' }}
                             class="flex-shrink-0 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
                         Entrar
                     </button>
+                    @endif
                 </div>
             </div>
             @endforeach
@@ -473,8 +493,10 @@ $statusLabel = [
             @if(isset($myTrips) && $myTrips->isNotEmpty())
                 <div class="space-y-2">
                 @foreach($myTrips as $trip)
+                @php $within24h = $trip->departs_at->lte(now()->addHours(24)); @endphp
                 <a href="{{ route('trips.show', $trip) }}"
-                   class="flex items-center gap-3 bg-white rounded-xl border border-gray-200 px-4 py-3 shadow-sm hover:border-blue-300 transition">
+                   class="flex items-center gap-3 bg-white rounded-xl border px-4 py-3 shadow-sm hover:border-blue-300 transition
+                          {{ $within24h ? 'border-amber-300 bg-amber-50' : 'border-gray-200' }}">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-semibold text-gray-900 truncate">
                             {{ $trip->origin }}
@@ -489,10 +511,16 @@ $statusLabel = [
                             @endif
                         </p>
                     </div>
-                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0
-                        {{ $trip->status === 'open' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700' }}">
-                        {{ $trip->status === 'open' ? 'Aberta' : 'Lotada' }}
-                    </span>
+                    <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                        @if($within24h)
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500 text-white">⚡ Iniciar</span>
+                        @else
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+                            {{ $trip->status === 'open' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700' }}">
+                            {{ $trip->status === 'open' ? 'Aberta' : 'Lotada' }}
+                        </span>
+                        @endif
+                    </div>
                 </a>
                 @endforeach
                 </div>
@@ -1168,6 +1196,41 @@ window.addEventListener('echo:TripRequestReceived', (ev) => {
         badge.innerHTML = `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold">!</span>
             <span class="text-xs text-blue-700 font-medium">Nova solicitação de ${e.passenger.name}</span>`;
     }
+});
+
+window.addEventListener('echo:NewFixedRouteOffer', (ev) => {
+    const e = ev.detail;
+    if (!document.querySelector('[data-passenger-dashboard]')) return;
+
+    const container = document.querySelector('.space-y-3.mb-5');
+    if (!container) { location.reload(); return; }
+
+    const seatsLeft = e.available_seats;
+    const card = document.createElement('div');
+    card.className = 'bg-white rounded-xl border border-blue-200 shadow-sm px-5 py-4';
+    card.innerHTML = `
+        <div class="flex items-start justify-between gap-3">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <img src="${e.driver?.avatar ?? ''}"
+                         onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(e.driver?.name ?? '?')}&background=7c3aed&color=fff&size=32'"
+                         class="w-7 h-7 rounded-full border border-gray-200">
+                    <span class="text-sm font-medium text-gray-700">${e.driver?.name ?? '—'}</span>
+                </div>
+                <p class="text-sm font-semibold text-gray-900 truncate">
+                    ${e.origin} <span class="text-gray-400 mx-1 font-normal">→</span> ${e.destination}
+                </p>
+                <p class="text-xs text-gray-500 mt-1">
+                    ${e.departure_time ?? ''} · ${e.days_label ?? ''}
+                    &nbsp;·&nbsp; <span class="text-green-600 font-medium">${seatsLeft} vaga(s)</span>
+                </p>
+            </div>
+            <button onclick="joinRoute(${e.id}, this)"
+                    class="flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+                Solicitar
+            </button>
+        </div>`;
+    container.prepend(card);
 });
 
 window.addEventListener('echo:NewTripOffer', (ev) => {
