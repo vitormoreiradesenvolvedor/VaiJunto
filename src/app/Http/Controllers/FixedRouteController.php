@@ -104,10 +104,12 @@ class FixedRouteController extends Controller
 
         // Notifica o motorista da rota
         $driver = $fixedRoute->driver;
-        $this->notificationService->notify($driver, 'new_ride_request', [
-            'ride_request_id' => $rideRequest->id,
-        ]);
-        NewRideRequestForDriver::dispatch($rideRequest, $driver);
+        try {
+            $this->notificationService->notify($driver, 'new_ride_request', [
+                'ride_request_id' => $rideRequest->id,
+            ]);
+            NewRideRequestForDriver::dispatch($rideRequest, $driver);
+        } catch (\Throwable) { /* broadcast failure não bloqueia o fluxo */ }
 
         return response()->json([
             'message'   => 'Solicitação enviada! O motorista será notificado.',

@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Rating;
 use App\Models\Ride;
+use App\Services\PointService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class RatingController extends Controller
 {
+    public function __construct(private PointService $pointService) {}
+
     public function create(Ride $ride): View|RedirectResponse
     {
         $user = auth()->user();
@@ -42,7 +45,7 @@ class RatingController extends Controller
         $role    = $user->id === $ride->driver_id ? 'driver' : 'passenger';
         $rateeId = $user->id === $ride->driver_id ? $ride->passenger_id : $ride->driver_id;
 
-        Rating::firstOrCreate(
+        $rating = Rating::firstOrCreate(
             ['ride_id' => $ride->id, 'rater_id' => $user->id],
             [
                 'ratee_id' => $rateeId,
@@ -51,6 +54,11 @@ class RatingController extends Controller
                 'role'     => $role,
             ],
         );
+
+        if ($rating->wasRecentlyCreated) {
+            $this->pointService->award($user->id, 2, 'avaliação enviada');
+            $this->pointService->award($rateeId, 2, 'avaliação recebida');
+        }
 
         return redirect()->route('dashboard')->with('success', 'Avaliação enviada! Obrigado pelo feedback.');
     }
