@@ -108,8 +108,8 @@ $statusLabel = [
             Rotas fixas recorrentes
         </h3>
 
+        <div id="routes-list" class="space-y-3 mb-5">
         @if(isset($availableFixedRoutes) && $availableFixedRoutes->isNotEmpty())
-        <div class="space-y-3 mb-5">
             @foreach($availableFixedRoutes as $fr)
             @php
                 $seatsLeft = max(0, $fr->available_seats - $fr->accepted_count);
@@ -156,12 +156,12 @@ $statusLabel = [
                 </div>
             </div>
             @endforeach
-        </div>
         @else
-        <div class="bg-white rounded-xl border border-gray-200 p-5 text-center text-gray-400 text-sm mb-5">
+        <div id="routes-empty" class="bg-white rounded-xl border border-gray-200 p-5 text-center text-gray-400 text-sm">
             Nenhuma rota fixa disponível.
         </div>
         @endif
+        </div>{{-- /routes-list --}}
 
         {{-- Viagens avulsas abertas por motoristas --}}
         <h3 class="text-base font-semibold text-gray-700 mb-3 flex items-center gap-2">
@@ -1202,8 +1202,9 @@ window.addEventListener('echo:NewFixedRouteOffer', (ev) => {
     const e = ev.detail;
     if (!document.querySelector('[data-passenger-dashboard]')) return;
 
-    const container = document.querySelector('.space-y-3.mb-5');
+    const container = document.getElementById('routes-list');
     if (!container) { location.reload(); return; }
+    document.getElementById('routes-empty')?.remove();
 
     const seatsLeft = e.available_seats;
     const card = document.createElement('div');
@@ -1327,8 +1328,9 @@ if (document.querySelector('[data-passenger-dashboard]')) {
             for (const r of routes) {
                 if (knownRouteIds.has(r.id)) continue;
                 knownRouteIds.add(r.id);
-                const container = document.querySelector('.space-y-3.mb-5');
+                const container = document.getElementById('routes-list');
                 if (!container) continue;
+                document.getElementById('routes-empty')?.remove();
                 const card = document.createElement('div');
                 card.className = 'bg-white rounded-xl border border-purple-200 shadow-sm px-5 py-4';
                 card.innerHTML = `
@@ -1359,7 +1361,8 @@ if (document.querySelector('[data-passenger-dashboard]')) {
         } catch { /* silencia erros de rede */ }
     }
 
-    setInterval(pollAvailableOffers, 60000);
+    pollAvailableOffers(); // chamada imediata ao carregar a página
+    setInterval(pollAvailableOffers, 20000);
 }
 
 // ── Tabs passageiro ─────────────────────────────────────────────────────────

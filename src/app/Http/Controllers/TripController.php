@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\NewTripOffer;
+use App\Events\RideCancelledByDriver;
 use App\Events\TripRequestReceived;
 use App\Models\RideRequest;
 use App\Models\Trip;
@@ -65,17 +66,22 @@ class TripController extends Controller
         abort_if($trip->driver_id !== auth()->id(), 403);
         abort_if(!in_array($trip->status, ['open', 'full']), 422);
 
-        $reason = $request->validate(['cancel_reason' => 'required|string|min:3'])['cancel_reason'];
+        $reason = trim((string) $request->input('cancel_reason', ''));
+        if (!$reason) {
+            return response()->json(['message' => 'Informe o motivo do cancelamento.'], 422);
+        }
 
-        // Cancel accepted rides first so passengers are notified
+        // Cancel accepted rides first so passengers are notified via Echo
         foreach ($trip->requests()->where('status', 'accepted')->with('ride')->get() as $req) {
-            if ($req->ride && in_array($req->ride->status, ['pending', 'accepted', 'in_progress'])) {
-                try {
-                    $this->rideService->cancel($req->ride, $reason);
-                } catch (\Throwable) {
-                    $req->ride->update(['status' => 'cancelled', 'cancel_reason' => $reason]);
-                    $req->update(['status' => 'cancelled']);
-                }
+            if (!$req->ride || !in_array($req->ride->status, ['pending', 'accepted', 'in_progress'])) {
+                continue;
+            }
+            try {
+                $this->rideService->cancel($req->ride, $reason);
+                try { RideCancelledByDriver::dispatch($req->ride); } catch (\Throwable) {}
+            } catch (\Throwable) {
+                try { $req->ride->update(['status' => 'cancelled', 'cancel_reason' => $reason]); } catch (\Throwable) {}
+                $req->update(['status' => 'cancelled']);
             }
         }
 
