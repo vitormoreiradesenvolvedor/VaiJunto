@@ -123,6 +123,12 @@
         </div>
     </div>
 
+    @if($route->status === 'cancelled')
+    <div class="bg-gray-100 border border-gray-300 text-gray-600 rounded-xl px-4 py-3 text-sm text-center">
+        Esta rota foi encerrada permanentemente.
+    </div>
+    @else
+
     {{-- Pausar / Reativar --}}
     <button id="toggle-btn"
             onclick="toggleStatus({{ $route->id }})"
@@ -157,6 +163,8 @@
             </div>
         </div>
     </div>
+
+    @endif {{-- route not cancelled --}}
 
 </div>
 
