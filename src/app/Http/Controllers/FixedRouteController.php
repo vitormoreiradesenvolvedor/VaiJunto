@@ -155,21 +155,26 @@ class FixedRouteController extends Controller
             return response()->json(['message' => 'Informe o motivo do encerramento.'], 422);
         }
 
-        foreach ($fixedRoute->requests()->where('status', 'accepted')->with('ride')->get() as $req) {
-            if (!$req->ride || !in_array($req->ride->status, ['pending', 'accepted', 'in_progress'])) {
-                continue;
+        try {
+            foreach ($fixedRoute->requests()->where('status', 'accepted')->with('ride')->get() as $req) {
+                if (!$req->ride || !in_array($req->ride->status, ['pending', 'accepted', 'in_progress'])) {
+                    continue;
+                }
+                try {
+                    $this->rideService->cancel($req->ride, $reason);
+                    try { RideCancelledByDriver::dispatch($req->ride); } catch (\Throwable) {}
+                } catch (\Throwable) {
+                    try { $req->ride->update(['status' => 'cancelled', 'cancel_reason' => $reason]); } catch (\Throwable) {}
+                    try { $req->update(['status' => 'cancelled']); } catch (\Throwable) {}
+                }
             }
-            try {
-                $this->rideService->cancel($req->ride, $reason);
-                try { RideCancelledByDriver::dispatch($req->ride); } catch (\Throwable) {}
-            } catch (\Throwable) {
-                try { $req->ride->update(['status' => 'cancelled', 'cancel_reason' => $reason]); } catch (\Throwable) {}
-                $req->update(['status' => 'cancelled']);
-            }
-        }
 
-        $fixedRoute->update(['status' => 'cancelled']);
-        $fixedRoute->requests()->whereIn('status', ['pending', 'accepted'])->update(['status' => 'cancelled']);
+            $fixedRoute->update(['status' => 'cancelled']);
+            $fixedRoute->requests()->whereIn('status', ['pending', 'accepted'])->update(['status' => 'cancelled']);
+        } catch (\Throwable $e) {
+            \Log::error('FixedRouteController::cancel error: ' . $e->getMessage());
+            return response()->json(['message' => 'Erro ao encerrar: ' . $e->getMessage()], 500);
+        }
 
         return response()->json(['message' => 'Rota encerrada.']);
     }

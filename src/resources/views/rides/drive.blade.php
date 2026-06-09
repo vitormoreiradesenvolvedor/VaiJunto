@@ -191,7 +191,7 @@ async function initDriveMap() {
     driveMap = new Map(document.getElementById("drive-map"), {
         center, zoom: 13,
         mapTypeControl: false, streetViewControl: false, rotateControl: false,
-        fullscreenControl: false, zoomControl: false,
+        fullscreenControl: true, zoomControl: false,
         gestureHandling: "cooperative",
     });
 
