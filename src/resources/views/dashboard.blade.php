@@ -115,7 +115,7 @@ $statusLabel = [
                 $seatsLeft = max(0, $fr->available_seats - $fr->accepted_count);
                 $myFrReq   = $myFixedRouteReqMap[$fr->id] ?? null;
             @endphp
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4">
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4" data-route-id="{{ $fr->id }}">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1.5">
@@ -1205,6 +1205,7 @@ window.addEventListener('echo:NewFixedRouteOffer', (ev) => {
     const seatsLeft = e.available_seats;
     const card = document.createElement('div');
     card.className = 'bg-white rounded-xl border border-blue-200 shadow-sm px-5 py-4';
+    card.dataset.routeId = e.id;
     card.innerHTML = `
         <div class="flex items-start justify-between gap-3">
             <div class="flex-1 min-w-0">
@@ -1284,7 +1285,7 @@ if (document.querySelector('[data-passenger-dashboard]')) {
             });
             const res = await fetch(`/passenger/available-offers?${params}`, { headers: { 'Accept': 'application/json' } });
             if (!res.ok) return;
-            const { trips, routes } = await res.json();
+            const { trips, routes, removed_route_ids } = await res.json();
 
             for (const t of trips) {
                 if (knownTripIds.has(t.id)) continue;
@@ -1329,6 +1330,7 @@ if (document.querySelector('[data-passenger-dashboard]')) {
                 document.getElementById('routes-empty')?.remove();
                 const card = document.createElement('div');
                 card.className = 'bg-white rounded-xl border border-purple-200 shadow-sm px-5 py-4';
+                card.dataset.routeId = r.id;
                 card.innerHTML = `
                     <div class="flex items-start justify-between gap-3">
                         <div class="flex-1 min-w-0">
@@ -1353,6 +1355,19 @@ if (document.querySelector('[data-passenger-dashboard]')) {
                         </button>
                     </div>`;
                 container.prepend(card);
+            }
+
+            for (const id of (removed_route_ids ?? [])) {
+                knownRouteIds.delete(id);
+                document.querySelector(`[data-route-id="${id}"]`)?.remove();
+                const container = document.getElementById('routes-list');
+                if (container && !container.querySelector('[data-route-id]')) {
+                    const empty = document.createElement('div');
+                    empty.id = 'routes-empty';
+                    empty.className = 'bg-white rounded-xl border border-gray-200 p-5 text-center text-gray-400 text-sm';
+                    empty.textContent = 'Nenhuma rota fixa disponível.';
+                    container.appendChild(empty);
+                }
             }
         } catch { /* silencia erros de rede */ }
     }
