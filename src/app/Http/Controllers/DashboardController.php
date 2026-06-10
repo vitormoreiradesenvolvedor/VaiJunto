@@ -187,7 +187,13 @@ class DashboardController extends Controller
                 ],
             ]);
 
-        return response()->json(['requests' => $requests]);
+        $fixedRoutePending = FixedRoute::where('driver_id', auth()->id())
+            ->whereIn('status', ['active', 'paused'])
+            ->withCount(['requests as pending_count' => fn ($q) => $q->where('status', 'pending')])
+            ->get(['id', 'pending_count'])
+            ->mapWithKeys(fn ($fr) => [(string) $fr->id => $fr->pending_count]);
+
+        return response()->json(['requests' => $requests, 'fixed_route_pending' => $fixedRoutePending]);
     }
 }
 
