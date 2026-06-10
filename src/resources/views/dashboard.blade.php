@@ -40,14 +40,38 @@ $statusLabel = [
     {{-- Carona em andamento (banner fixo no topo) --}}
     @if(isset($activeRequest) && $activeRequest)
     @php
-        $aRide   = $activeRequest->ride;
-        $aDriver = $aRide->driver;
-        $aVehicle = $aRide->vehicle ?? $aDriver?->vehicle;
-        $aIsMoving = $aRide->status === 'in_progress';
+        $aRide        = $activeRequest->ride;
+        $aDriver      = $aRide->driver;
+        $aVehicle     = $aRide->vehicle ?? $aDriver?->vehicle;
+        $aIsMoving    = $aRide->status === 'in_progress';
+        $aFixedRoute  = $activeRequest->fixedRoute;
+        $aRoutePaused = $aFixedRoute && $aFixedRoute->status === 'paused';
+        $aIsFixedRoute = $aFixedRoute !== null;
+
+        if ($aIsMoving) {
+            $aBannerClass = 'bg-green-50 border-green-400';
+            $aLabelClass  = 'text-green-800';
+            $aBadgeClass  = 'bg-green-600 text-white';
+            $aLabel       = '📍 Viagem em andamento';
+        } elseif ($aRoutePaused) {
+            $aBannerClass = 'bg-orange-50 border-orange-400';
+            $aLabelClass  = 'text-orange-800';
+            $aBadgeClass  = 'bg-orange-500 text-white';
+            $aLabel       = '⏸ Rota pausada pelo motorista';
+        } elseif ($aIsFixedRoute) {
+            $aBannerClass = 'bg-indigo-50 border-indigo-400';
+            $aLabelClass  = 'text-indigo-800';
+            $aBadgeClass  = 'bg-indigo-600 text-white';
+            $aLabel       = '🗓 Vaga confirmada na rota fixa';
+        } else {
+            $aBannerClass = 'bg-blue-50 border-blue-400';
+            $aLabelClass  = 'text-blue-800';
+            $aBadgeClass  = 'bg-blue-600 text-white';
+            $aLabel       = '🚗 Motorista a caminho!';
+        }
     @endphp
     <a href="{{ route('rides.track', $activeRequest) }}"
-       class="flex items-center gap-4 mb-5 p-4 rounded-2xl border-2 shadow-md transition hover:shadow-lg
-              {{ $aIsMoving ? 'bg-green-50 border-green-400' : 'bg-blue-50 border-blue-400' }}">
+       class="flex items-center gap-4 mb-5 p-4 rounded-2xl border-2 shadow-md transition hover:shadow-lg {{ $aBannerClass }}">
         <span class="relative flex-shrink-0">
             <span class="text-3xl">🚗</span>
             @if($aIsMoving)
@@ -55,9 +79,7 @@ $statusLabel = [
             @endif
         </span>
         <div class="flex-1 min-w-0">
-            <p class="font-bold text-sm {{ $aIsMoving ? 'text-green-800' : 'text-blue-800' }}">
-                {{ $aIsMoving ? '📍 Viagem em andamento' : '🚗 Motorista a caminho!' }}
-            </p>
+            <p class="font-bold text-sm {{ $aLabelClass }}">{{ $aLabel }}</p>
             <p class="text-xs text-gray-600 truncate mt-0.5">
                 {{ $activeRequest->origin }} → {{ $activeRequest->destination }}
             </p>
@@ -68,8 +90,7 @@ $statusLabel = [
             </p>
             @endif
         </div>
-        <span class="flex-shrink-0 text-xs font-semibold px-3 py-1 rounded-full
-            {{ $aIsMoving ? 'bg-green-600 text-white' : 'bg-blue-600 text-white' }}">
+        <span class="flex-shrink-0 text-xs font-semibold px-3 py-1 rounded-full {{ $aBadgeClass }}">
             Acompanhar →
         </span>
     </a>

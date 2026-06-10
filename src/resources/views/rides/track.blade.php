@@ -11,26 +11,34 @@
     $rideStatus = $ride?->status; // pending | accepted | in_progress | completed | cancelled
 
     // Status "visual" unificado para o passageiro
+    $fixedRoute    = $req->fixedRoute;
+    $isFixedRoute  = $fixedRoute !== null;
+    $routePaused   = $isFixedRoute && $fixedRoute->status === 'paused';
+
     $isScheduledFuture = $ride && $ride->status === 'accepted'
         && $req->scheduled_for
         && $req->scheduled_for->gt(now()->addHour());
 
     $uiStatus = match(true) {
-        $reqStatus === 'cancelled'                                                                          => 'cancelled',
-        $reqStatus === 'rejected'                                                                           => 'rejected',
-        $rideStatus === 'completed'                                                                         => 'completed',
-        $rideStatus === 'cancelled'                                                                         => 'cancelled',
-        $rideStatus === 'in_progress'                                                                       => 'in_progress',
+        $reqStatus === 'cancelled'                                                                                  => 'cancelled',
+        $reqStatus === 'rejected'                                                                                   => 'rejected',
+        $rideStatus === 'completed'                                                                                 => 'completed',
+        $rideStatus === 'cancelled'                                                                                 => 'cancelled',
+        $rideStatus === 'in_progress'                                                                               => 'in_progress',
         in_array($rideStatus, ['pending','accepted']) && $ride && $ride->arrived_at && !$ride->passenger_boarded_at => 'driver_arrived',
-        in_array($rideStatus, ['pending','accepted']) && $ride && $ride->passenger_boarded_at               => 'boarded_waiting',
-        in_array($rideStatus, ['pending','accepted']) && $ride && $isScheduledFuture                       => 'scheduled_confirmed',
-        in_array($rideStatus, ['pending','accepted']) && $ride                                              => 'driver_found',
-        default                                                                                             => 'waiting',
+        in_array($rideStatus, ['pending','accepted']) && $ride && $ride->passenger_boarded_at                       => 'boarded_waiting',
+        in_array($rideStatus, ['pending','accepted']) && $ride && $routePaused                                      => 'route_paused',
+        in_array($rideStatus, ['pending','accepted']) && $ride && $isFixedRoute                                     => 'route_confirmed',
+        in_array($rideStatus, ['pending','accepted']) && $ride && $isScheduledFuture                                => 'scheduled_confirmed',
+        in_array($rideStatus, ['pending','accepted']) && $ride                                                      => 'driver_found',
+        default                                                                                                     => 'waiting',
     };
 
     $statusConfig = [
         'waiting'             => ['label' => 'Aguardando motorista',            'color' => 'yellow',  'icon' => '⏳', 'pulse' => true],
         'driver_found'        => ['label' => 'Motorista a caminho!',            'color' => 'blue',    'icon' => '🚗', 'pulse' => true],
+        'route_confirmed'     => ['label' => 'Vaga confirmada na rota fixa',    'color' => 'indigo',  'icon' => '🗓', 'pulse' => false],
+        'route_paused'        => ['label' => 'Rota pausada pelo motorista',     'color' => 'orange',  'icon' => '⏸', 'pulse' => false],
         'scheduled_confirmed' => ['label' => 'Viagem confirmada!',              'color' => 'indigo',  'icon' => '📅', 'pulse' => false],
         'driver_arrived'      => ['label' => 'Motorista chegou!',               'color' => 'orange',  'icon' => '📍', 'pulse' => true],
         'boarded_waiting'     => ['label' => 'Embarcado! Aguardando início...', 'color' => 'purple',  'icon' => '✅', 'pulse' => true],
@@ -91,6 +99,10 @@
             <p class="text-xs {{ $c['text'] }} opacity-75 mt-0.5">Notificamos os motoristas disponíveis. Atualizando automaticamente...</p>
             @elseif($uiStatus === 'driver_found')
             <p class="text-xs {{ $c['text'] }} opacity-75 mt-0.5">Um motorista aceitou sua solicitação.</p>
+            @elseif($uiStatus === 'route_confirmed')
+            <p class="text-xs {{ $c['text'] }} opacity-75 mt-0.5">Sua vaga está garantida. O motorista sairá no próximo horário programado.</p>
+            @elseif($uiStatus === 'route_paused')
+            <p class="text-xs {{ $c['text'] }} opacity-75 mt-0.5">O motorista pausou temporariamente a rota. Aguarde a reativação.</p>
             @elseif($uiStatus === 'scheduled_confirmed')
             <p class="text-xs {{ $c['text'] }} opacity-75 mt-0.5">O motorista sairá na data agendada. Você será notificado.</p>
             @elseif($uiStatus === 'driver_arrived')
@@ -456,6 +468,14 @@ window.addEventListener('echo:RideCancelledByDriver', () => {
     document.getElementById('boarded-waiting-section')?.classList.add('hidden');
 });
 
+// FixedRoutePaused — motorista pausou a rota fixa
+window.addEventListener('echo:FixedRoutePaused', () => {
+    if (!['driver_arrived','boarded_waiting','in_progress','completed','cancelled'].includes(currentStatus)) {
+        currentStatus = 'route_paused';
+        updateBanner('route_paused');
+    }
+});
+
 // DriverArrived — motorista chegou ao ponto de embarque
 window.addEventListener('echo:DriverArrived', () => {
     driverArrived = true;
@@ -516,17 +536,21 @@ function applyStatus(data) {
     const scheduledFor = data.scheduled_for ? new Date(data.scheduled_for) : null;
     const isScheduledFuture = scheduledFor && (scheduledFor - Date.now()) > 60 * 60 * 1000;
 
+    const fixedRouteStatus = data.fixed_route_status ?? null;
+
     let ui;
-    if      (reqStatus === "cancelled")                                                               ui = "cancelled";
-    else if (reqStatus === "rejected")                                                                ui = "rejected";
-    else if (rideStatus === "completed")                                                              ui = "completed";
-    else if (rideStatus === "cancelled")                                                              ui = "cancelled";
-    else if (rideStatus === "in_progress")                                                            ui = "in_progress";
-    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && passengerBoarded)           ui = "boarded_waiting";
-    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && driverArrived)              ui = "driver_arrived";
-    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && isScheduledFuture)          ui = "scheduled_confirmed";
-    else if (rideStatus && ["pending","accepted"].includes(rideStatus))                               ui = "driver_found";
-    else                                                                                              ui = "waiting";
+    if      (reqStatus === "cancelled")                                                                                ui = "cancelled";
+    else if (reqStatus === "rejected")                                                                                 ui = "rejected";
+    else if (rideStatus === "completed")                                                                               ui = "completed";
+    else if (rideStatus === "cancelled")                                                                               ui = "cancelled";
+    else if (rideStatus === "in_progress")                                                                             ui = "in_progress";
+    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && passengerBoarded)                            ui = "boarded_waiting";
+    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && driverArrived)                               ui = "driver_arrived";
+    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && fixedRouteStatus === "paused")               ui = "route_paused";
+    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && fixedRouteStatus)                            ui = "route_confirmed";
+    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && isScheduledFuture)                           ui = "scheduled_confirmed";
+    else if (rideStatus && ["pending","accepted"].includes(rideStatus))                                                ui = "driver_found";
+    else                                                                                                               ui = "waiting";
 
     if (ui !== currentStatus) {
         const wasInProgress = currentStatus === 'in_progress';
@@ -566,15 +590,17 @@ function updateBoardSection(ride) {
 }
 
 const BANNER_CONFIG = {
-    waiting:             { label: "⏳ Aguardando motorista",              sub: "Notificamos os motoristas disponíveis. Atualizando automaticamente...", color: "yellow",  pulse: true  },
-    driver_found:        { label: "🚗 Motorista a caminho!",              sub: "Um motorista aceitou sua solicitação.",                                  color: "blue",    pulse: true  },
-    scheduled_confirmed: { label: "📅 Viagem confirmada!",               sub: "O motorista sairá na data agendada. Você será notificado.",              color: "indigo",  pulse: false },
-    driver_arrived:      { label: "📍 Motorista chegou!",                sub: "Confirme que você entrou no veículo.",                                   color: "orange",  pulse: true  },
-    boarded_waiting:     { label: "✅ Embarcado! Aguardando início...",   sub: "O motorista vai iniciar a viagem em breve.",                             color: "purple",  pulse: true  },
-    in_progress:         { label: "📍 Em andamento",                     sub: "",                                                                       color: "green",   pulse: true  },
-    completed:           { label: "✅ Viagem concluída",                 sub: "",                                                                       color: "emerald", pulse: false },
-    cancelled:           { label: "✖ Carona cancelada",                  sub: "",                                                                       color: "gray",    pulse: false },
-    rejected:            { label: "✖ Solicitação recusada",              sub: "",                                                                       color: "red",     pulse: false },
+    waiting:             { label: "⏳ Aguardando motorista",              sub: "Notificamos os motoristas disponíveis. Atualizando automaticamente...",          color: "yellow",  pulse: true  },
+    driver_found:        { label: "🚗 Motorista a caminho!",              sub: "Um motorista aceitou sua solicitação.",                                           color: "blue",    pulse: true  },
+    route_confirmed:     { label: "🗓 Vaga confirmada na rota fixa",      sub: "Sua vaga está garantida. O motorista sairá no próximo horário programado.",       color: "indigo",  pulse: false },
+    route_paused:        { label: "⏸ Rota pausada pelo motorista",        sub: "O motorista pausou temporariamente a rota. Aguarde a reativação.",                color: "orange",  pulse: false },
+    scheduled_confirmed: { label: "📅 Viagem confirmada!",               sub: "O motorista sairá na data agendada. Você será notificado.",                       color: "indigo",  pulse: false },
+    driver_arrived:      { label: "📍 Motorista chegou!",                sub: "Confirme que você entrou no veículo.",                                            color: "orange",  pulse: true  },
+    boarded_waiting:     { label: "✅ Embarcado! Aguardando início...",   sub: "O motorista vai iniciar a viagem em breve.",                                      color: "purple",  pulse: true  },
+    in_progress:         { label: "📍 Em andamento",                     sub: "",                                                                                color: "green",   pulse: true  },
+    completed:           { label: "✅ Viagem concluída",                 sub: "",                                                                                color: "emerald", pulse: false },
+    cancelled:           { label: "✖ Carona cancelada",                  sub: "",                                                                                color: "gray",    pulse: false },
+    rejected:            { label: "✖ Solicitação recusada",              sub: "",                                                                                color: "red",     pulse: false },
 };
 
 const COLOR_MAP = {
