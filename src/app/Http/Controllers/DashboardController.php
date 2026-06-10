@@ -63,7 +63,7 @@ class DashboardController extends Controller
 
         // Modo passageiro
         // Carona ativa (accepted ou in_progress) — exibida no topo do dashboard
-        $activeRequest = RideRequest::with(['ride.driver', 'ride.vehicle'])
+        $activeRequest = RideRequest::with(['ride.driver', 'ride.vehicle', 'fixedRoute'])
             ->where('passenger_id', $user->id)
             ->whereHas('ride', fn ($q) => $q->whereIn('status', ['accepted', 'in_progress']))
             ->latest()

@@ -60,7 +60,7 @@ class RideController extends Controller
         abort_if($rideRequest->passenger_id !== auth()->id(), 403);
 
         return view('rides.track', [
-            'rideRequest' => $rideRequest->load('ride.driver.vehicle'),
+            'rideRequest' => $rideRequest->load('ride.driver.vehicle', 'fixedRoute'),
             'mapsKey'     => config('services.google.maps_key'),
         ]);
     }
@@ -69,7 +69,7 @@ class RideController extends Controller
     {
         abort_if($rideRequest->passenger_id !== auth()->id(), 403);
 
-        $rideRequest->load('ride.driver.vehicle');
+        $rideRequest->load('ride.driver.vehicle', 'fixedRoute');
         $ride = $rideRequest->ride;
 
         $vehicle = null;
@@ -79,8 +79,9 @@ class RideController extends Controller
         }
 
         return response()->json([
-            'request_status' => $rideRequest->status,
-            'scheduled_for'  => $rideRequest->scheduled_for?->toIso8601String(),
+            'request_status'     => $rideRequest->status,
+            'scheduled_for'      => $rideRequest->scheduled_for?->toIso8601String(),
+            'fixed_route_status' => $rideRequest->fixedRoute?->status,
             'ride' => $ride ? [
                 'id'                   => $ride->id,
                 'status'               => $ride->status,
