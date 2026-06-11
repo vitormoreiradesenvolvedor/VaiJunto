@@ -1447,13 +1447,21 @@ if (document.querySelector('[data-passenger-dashboard]')) {
 
     async function pollAvailableOffers() {
         try {
+            const hasBanner = !!document.getElementById('active-request-banner');
             const params = new URLSearchParams({
-                trip_ids:  [...knownTripIds].join(','),
-                route_ids: [...knownRouteIds].join(','),
+                trip_ids:     [...knownTripIds].join(','),
+                route_ids:    [...knownRouteIds].join(','),
+                check_active: hasBanner ? '0' : '1',
             });
             const res = await fetch(`/passenger/available-offers?${params}`, { headers: { 'Accept': 'application/json' } });
             if (!res.ok) return;
-            const { trips, routes, removed_route_ids } = await res.json();
+            const { trips, routes, removed_route_ids, active_track_url } = await res.json();
+
+            // Solicitação aceita enquanto o passageiro estava no dashboard sem banner
+            if (active_track_url && !document.getElementById('active-request-banner')) {
+                window.location.href = active_track_url;
+                return;
+            }
 
             for (const t of trips) {
                 if (knownTripIds.has(t.id)) continue;
