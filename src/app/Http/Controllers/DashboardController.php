@@ -63,9 +63,14 @@ class DashboardController extends Controller
 
         // Modo passageiro
         // Carona ativa (accepted ou in_progress) — exibida no topo do dashboard
+        // Exclui requisições de rota fixa pausada (banner deve sumir quando rota é pausada)
         $activeRequest = RideRequest::with(['ride.driver', 'ride.vehicle', 'fixedRoute'])
             ->where('passenger_id', $user->id)
             ->whereHas('ride', fn ($q) => $q->whereIn('status', ['accepted', 'in_progress']))
+            ->where(function ($q) {
+                $q->whereNull('fixed_route_id')
+                  ->orWhereHas('fixedRoute', fn ($fq) => $fq->where('status', 'active'));
+            })
             ->latest()
             ->first();
 
