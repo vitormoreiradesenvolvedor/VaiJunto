@@ -7,6 +7,7 @@ use App\Events\DriverLocationUpdated;
 use App\Events\PassengerBoarded;
 use App\Events\RideCancelledByDriver;
 use App\Events\RideCancelledByPassenger;
+use App\Events\RideStarted;
 use App\Models\Ride;
 use App\Models\RideRequest;
 use App\Services\RideService;
@@ -155,6 +156,8 @@ class RideController extends Controller
         abort_if(!$ride->passenger_boarded_at, 422, 'Aguarde o passageiro confirmar o embarque.');
 
         $this->rideService->start($ride);
+
+        try { RideStarted::dispatch($ride->load('rideRequest')); } catch (\Throwable) {}
 
         return response()->json(['status' => 'in_progress']);
     }
