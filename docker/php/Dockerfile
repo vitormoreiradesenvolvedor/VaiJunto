@@ -2,6 +2,7 @@ FROM php:8.3-fpm-alpine
 
 RUN apk add --no-cache \
         bash curl git unzip sqlite sqlite-dev \
+	postgresql-dev \
         libpng-dev libzip-dev icu-dev \
     && docker-php-ext-install \
         pdo pdo_mysql pdo_sqlite pdo_pgsql \
