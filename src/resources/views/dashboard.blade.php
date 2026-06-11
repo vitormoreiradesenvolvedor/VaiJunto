@@ -67,10 +67,10 @@ $statusLabel = [
             $aBannerClass = 'bg-blue-50 border-blue-400';
             $aLabelClass  = 'text-blue-800';
             $aBadgeClass  = 'bg-blue-600 text-white';
-            $aLabel       = '🚗 Motorista a caminho!';
+            $aLabel       = '✅ Vaga confirmada, aguardando início';
         }
     @endphp
-    <a href="{{ route('rides.track', $activeRequest) }}"
+    <a id="active-request-banner" href="{{ route('rides.track', $activeRequest) }}"
        class="flex items-center gap-4 mb-5 p-4 rounded-2xl border-2 shadow-md transition hover:shadow-lg {{ $aBannerClass }}">
         <span class="relative flex-shrink-0">
             <span class="text-3xl">🚗</span>
@@ -1320,6 +1320,16 @@ window.addEventListener('echo:NewTripOffer', (ev) => {
         // Se a lista vazia estava visível, recarrega para reconstruir com a lista correta
         location.reload();
     }
+});
+
+// ── Passageiro: remove banner quando rota fixa é pausada ─────────────────────
+window.addEventListener('echo:FixedRoutePaused', () => {
+    document.getElementById('active-request-banner')?.remove();
+});
+
+// ── Passageiro: remove banner quando motorista cancela a carona ───────────────
+window.addEventListener('echo:RideCancelledByDriver', () => {
+    document.getElementById('active-request-banner')?.remove();
 });
 
 // ── Polling de ofertas disponíveis (passageiro) ──────────────────────────────
