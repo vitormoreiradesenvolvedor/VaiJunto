@@ -264,6 +264,10 @@
             .listen('.FixedRoutePaused', (e) => {
                 showToast(`⏸ Rota pausada: ${e.origin} → ${e.destination}`, 'warning');
                 dispatchEchoEvent('FixedRoutePaused', e);
+            })
+            .listen('.RideStarted', (e) => {
+                showToast('🚀 O motorista iniciou a viagem!', 'success');
+                dispatchEchoEvent('RideStarted', e);
             });
 
         // Canal público de novas viagens avulsas

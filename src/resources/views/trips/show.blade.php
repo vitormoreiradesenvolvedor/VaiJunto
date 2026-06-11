@@ -278,7 +278,7 @@ async function pollTripPending() {
         }
     } catch {}
 }
-setInterval(pollTripPending, 20000);
+setInterval(pollTripPending, 5000);
 
 // Recebe nova solicitação em tempo real
 window.addEventListener('echo:TripRequestReceived', (ev) => {

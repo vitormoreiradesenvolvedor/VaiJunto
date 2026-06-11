@@ -448,13 +448,31 @@ window.addEventListener('echo:RideAccepted', (ev) => {
     applyStatus(ev.detail);
 });
 
-// DriverLocationUpdated — move o marcador e atualiza rota se desvio detectado
+// DriverLocationUpdated — move o marcador; se passageiro ainda vê "Viagem confirmada!", atualiza para "Motorista a caminho!"
 window.addEventListener('echo:DriverLocationUpdated', async (ev) => {
     const { lat, lng } = ev.detail;
     if (window.carMarker) {
         window.carMarker.setPosition({ lat, lng });
     }
     await checkTrackReroute(lat, lng);
+    // Motorista já enviou localização: ele está a caminho
+    if (currentStatus === 'scheduled_confirmed') {
+        currentStatus = 'driver_found';
+        updateBanner('driver_found');
+    }
+});
+
+// RideStarted — motorista iniciou a viagem (in_progress)
+window.addEventListener('echo:RideStarted', () => {
+    if (TERMINAL.includes(currentStatus)) return;
+    currentStatus = 'in_progress';
+    clearInterval(polling);
+    updateBanner('in_progress');
+    updateCancelSection('accepted', 'in_progress');
+    document.getElementById('board-section')?.classList.add('hidden');
+    document.getElementById('boarded-waiting-section')?.classList.add('hidden');
+    if (typeof expandTrackMap === 'function') expandTrackMap();
+    if (typeof startTrackAutoZoom === 'function') startTrackAutoZoom();
 });
 
 // RideCancelledByDriver — motorista cancelou
