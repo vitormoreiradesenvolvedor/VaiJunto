@@ -162,7 +162,28 @@ class DashboardController extends Controller
             ? FixedRoute::whereIn('id', $knownRouteIds)->where('status', '!=', 'active')->pluck('id')->toArray()
             : [];
 
-        return response()->json(['trips' => $trips, 'routes' => $routes, 'removed_route_ids' => $removedRouteIds]);
+        // Quando o cliente não tem banner ativo, verifica se alguma solicitação foi aceita
+        $activeTrackUrl = null;
+        if ($request->boolean('check_active')) {
+            $activeReq = RideRequest::where('passenger_id', $user->id)
+                ->whereHas('ride', fn ($q) => $q->whereIn('status', ['accepted', 'in_progress']))
+                ->where(function ($q) {
+                    $q->whereNull('fixed_route_id')
+                      ->orWhereHas('fixedRoute', fn ($fq) => $fq->where('status', 'active'));
+                })
+                ->latest()
+                ->first();
+            if ($activeReq) {
+                $activeTrackUrl = route('rides.track', $activeReq);
+            }
+        }
+
+        return response()->json([
+            'trips'            => $trips,
+            'routes'           => $routes,
+            'removed_route_ids'=> $removedRouteIds,
+            'active_track_url' => $activeTrackUrl,
+        ]);
     }
 
     /** Polling: lista atual de solicitações avulsas pendentes para o motorista */
