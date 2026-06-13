@@ -152,11 +152,23 @@ class FixedRouteController extends Controller
         try {
             $this->rideService->accept($rideRequest, $driver);
         } catch (\Throwable) {
-            // fallback: apenas atualiza status sem criar ride
             $rideRequest->update(['status' => 'accepted']);
         }
 
-        return response()->json(['message' => 'Solicitação aceita.']);
+        $rideRequest->load(['passenger', 'ride']);
+
+        return response()->json([
+            'message' => 'Solicitação aceita.',
+            'request' => [
+                'id'            => $rideRequest->id,
+                'scheduled_for' => $rideRequest->scheduled_for?->format('d/m H:i'),
+                'passenger'     => [
+                    'name'   => $rideRequest->passenger->name,
+                    'avatar' => $rideRequest->passenger->avatar,
+                ],
+                'ride_url' => $rideRequest->ride ? route('rides.drive', $rideRequest->ride) : null,
+            ],
+        ]);
     }
 
     /** Motorista encerra rota fixa permanentemente */
