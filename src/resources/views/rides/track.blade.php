@@ -460,7 +460,7 @@ window.addEventListener('echo:DriverLocationUpdated', async (ev) => {
     if (!driverEnRoute) {
         driverEnRoute = true;
     }
-    if (currentStatus === 'scheduled_confirmed') {
+    if (currentStatus === 'scheduled_confirmed' || currentStatus === 'route_confirmed') {
         currentStatus = 'driver_found';
         updateBanner('driver_found');
     }
@@ -569,7 +569,7 @@ function applyStatus(data) {
     else if (rideStatus && ["pending","accepted"].includes(rideStatus) && passengerBoarded)                            ui = "boarded_waiting";
     else if (rideStatus && ["pending","accepted"].includes(rideStatus) && driverArrived)                               ui = "driver_arrived";
     else if (rideStatus && ["pending","accepted"].includes(rideStatus) && fixedRouteStatus === "paused")               ui = "route_paused";
-    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && fixedRouteStatus)                            ui = "route_confirmed";
+    else if (rideStatus && ["pending","accepted"].includes(rideStatus) && fixedRouteStatus && !driverEnRoute)          ui = "route_confirmed";
     else if (rideStatus && ["pending","accepted"].includes(rideStatus) && isScheduledFuture && !driverEnRoute)          ui = "scheduled_confirmed";
     else if (rideStatus && ["pending","accepted"].includes(rideStatus))                                                ui = "driver_found";
     else                                                                                                               ui = "waiting";
