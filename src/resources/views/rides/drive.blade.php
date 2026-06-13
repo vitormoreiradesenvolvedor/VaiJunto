@@ -170,10 +170,12 @@
 ({key: "{{ $mapsKey }}", v: "weekly"});
 
 let driveMap, driverMarker, driveRouteLine, driveFallbackLine;
-let routePoints     = [];   // pontos da rota atual (overview_path)
-let lastRerouteTime = 0;
-const REROUTE_COOLDOWN  = 20000; // ms entre recálculos
-const DEVIATION_THRESHOLD = 80;  // metros fora da rota para recalcular
+let routePoints      = [];
+let lastRerouteTime  = 0;
+let currentDriverPos = null; // última posição GPS conhecida do motorista
+let drivePhase       = 'to_pickup'; // 'to_pickup' | 'arrived' | 'to_dest' — atualizado pelo 2º script
+const REROUTE_COOLDOWN    = 20000;
+const DEVIATION_THRESHOLD = 80;
 
 async function initDriveMap() {
     const { Map } = await google.maps.importLibrary("maps");
@@ -228,9 +230,10 @@ async function initDriveMap() {
         position: center,
     });
 
-    if (origin && dest) {
-        await drawRoute(origin, dest, "#2563EB", true);
+    if (drivePhase === 'to_dest' && origin && dest) {
+        await drawRoute(origin, dest, "#16a34a", true);
     }
+    // Para 'to_pickup': o primeiro tick de GPS dispara checkAndReroute que desenha a rota
 
     // Aguarda o mapa terminar de renderizar e reenquadra a rota
     google.maps.event.addListenerOnce(driveMap, 'tilesloaded', () => fitAllRoute());
@@ -256,9 +259,13 @@ function fitAllRoute() {
     const bounds = new google.maps.LatLngBounds();
     if (routePoints.length) {
         for (const pt of routePoints) bounds.extend(pt);
-    } else {
-        bounds.extend(pickup);
-        bounds.extend(dropoff);
+    } else if (typeof pickup !== 'undefined' && typeof dropoff !== 'undefined') {
+        if (drivePhase === 'to_pickup') {
+            bounds.extend(pickup);
+        } else {
+            bounds.extend(pickup);
+            bounds.extend(dropoff);
+        }
     }
     const pos = driverMarker?.getPosition?.();
     if (pos) bounds.extend(pos);
@@ -338,24 +345,28 @@ function minDistToRoute(lat, lng) {
 
 // ── Recálculo de rota em tempo real ──────────────────────────────────────────
 async function checkAndReroute(lat, lng) {
-    if (rideStatus !== 'in_progress') return; // só recalcula durante a viagem
-    const now = Date.now();
-    if (now - lastRerouteTime < REROUTE_COOLDOWN) return;
+    if (drivePhase === 'arrived') return;
+    const target = (typeof dropoff !== 'undefined' && drivePhase === 'to_dest') ? dropoff
+                 : (typeof pickup  !== 'undefined' ? pickup : null);
+    if (!target) return;
 
-    const devDist = minDistToRoute(lat, lng);
-    if (devDist > DEVIATION_THRESHOLD) {
-        lastRerouteTime = now;
-        const dest = dropoff;
-        setGpsStatus("🔄 Recalculando rota...", "bg-orange-400");
-        await drawRoute({ lat, lng }, dest, "#f97316"); // laranja = rota recalculada
-        setGpsStatus("🔄 Rota atualizada", "bg-orange-400");
-        setTimeout(() => setGpsStatus("GPS ativo", "bg-green-500"), 3000);
-    }
+    const now = Date.now();
+    const firstDraw = routePoints.length === 0;
+    if (!firstDraw && now - lastRerouteTime < REROUTE_COOLDOWN) return;
+    if (!firstDraw && minDistToRoute(lat, lng) <= DEVIATION_THRESHOLD) return;
+
+    lastRerouteTime = now;
+    const color = drivePhase === 'to_dest' ? "#16a34a" : "#2563EB";
+    if (!firstDraw) setGpsStatus("🔄 Recalculando rota...", "bg-orange-400");
+    await drawRoute({ lat, lng }, target, color);
+    setGpsStatus("GPS ativo", "bg-green-500");
+    if (!firstDraw) setTimeout(() => setGpsStatus("GPS ativo", "bg-green-500"), 3000);
 }
 
 // Atualiza posição do marcador do motorista no mapa
 function moveDriverMarker(lat, lng) {
     if (!driverMarker) return;
+    currentDriverPos = { lat, lng };
     driverMarker.setPosition({ lat, lng });
 }
 </script>
@@ -376,6 +387,9 @@ let passengerBoarded = root.dataset.boarded === 'true';
 let locationTimer   = null;
 let statusPoller    = null;
 let simPhase        = null; // 'to_pickup' | 'to_dest'
+
+// Sincroniza drivePhase (declarada no script do Maps) com o status atual
+drivePhase = rideStatus === 'in_progress' ? 'to_dest' : 'to_pickup';
 
 // ── Polling de status (fallback para Echo falhar) ─────────────────────────────
 const statusDriverUrl = root.dataset.statusDriverUrl;
@@ -415,6 +429,9 @@ document.getElementById("btn-arrived").addEventListener("click", async () => {
 
     if (res.ok) {
         driverArrived = true;
+        drivePhase = 'arrived';
+        routePoints = [];
+        lastRerouteTime = 0;
         stopGPS(); // para simulação de ida
         btn.classList.add("hidden");
         document.getElementById("waiting-board").classList.remove("hidden");
@@ -457,10 +474,17 @@ document.getElementById("btn-start").addEventListener("click", async () => {
 
     if (res.ok) {
         rideStatus = "in_progress";
+        drivePhase = 'to_dest';
+        routePoints = [];
+        lastRerouteTime = 0;
         btn.classList.add("hidden");
         document.getElementById("gps-section").classList.remove("hidden");
         updateStatusBanner("in_progress");
         if (typeof expandMapForRide === 'function') expandMapForRide();
+        // Desenha rota imediata se já temos posição GPS; senão o próximo tick fará isso
+        if (typeof currentDriverPos !== 'undefined' && currentDriverPos) {
+            drawRoute(currentDriverPos, dropoff, "#16a34a");
+        }
         startGPS("to_dest"); // fase 2: pickup → destino
     } else {
         btn.disabled = false; btn.textContent = "▶ Iniciar Viagem";
@@ -571,6 +595,7 @@ function startSimulation(phase) {
         const lng = from.lng + (to.lng - from.lng) * t;
         if (typeof moveDriverMarker === 'function') moveDriverMarker(lat, lng);
         postLocation(lat, lng);
+        if (typeof checkAndReroute === 'function') checkAndReroute(lat, lng);
         step++;
     };
 
@@ -599,7 +624,7 @@ function setGpsStatus(text, dotClass) {
 
 // Inicia GPS imediatamente — transmite localização tanto em 'accepted'
 // (a caminho do passageiro) quanto em 'in_progress' (durante a corrida)
-startGPS();
+startGPS(drivePhase);
 
 // Se a página carregou já em in_progress, expande o mapa imediatamente
 if (rideStatus === 'in_progress' && typeof expandMapForRide === 'function') {
