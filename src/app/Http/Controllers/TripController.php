@@ -141,7 +141,16 @@ class TripController extends Controller
             $trip->update(['status' => 'full']);
         }
 
-        return response()->json($ride);
+        $rideRequest->load(['passenger', 'ride']);
+        return response()->json([
+            'message' => 'Solicitação aceita.',
+            'request' => [
+                'id'            => $rideRequest->id,
+                'scheduled_for' => $rideRequest->scheduled_for?->format('d/m H:i'),
+                'passenger'     => ['name' => $rideRequest->passenger->name, 'avatar' => $rideRequest->passenger->avatar],
+                'ride_url'      => $rideRequest->ride ? route('rides.drive', $rideRequest->ride) : null,
+            ],
+        ]);
     }
 
     public function rejectRequest(Trip $trip, RideRequest $rideRequest): JsonResponse

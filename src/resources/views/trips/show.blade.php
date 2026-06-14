@@ -64,10 +64,9 @@
     </div>
 
     {{-- Passageiros aceitos --}}
-    @if($accepted->isNotEmpty())
-    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Passageiros confirmados ({{ $accepted->count() }})</h3>
-        <div class="space-y-2">
+    <div id="confirmed-section" class="{{ $accepted->isEmpty() ? 'hidden' : '' }} bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+        <h3 id="confirmed-heading" class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Passageiros confirmados ({{ $accepted->count() }})</h3>
+        <div class="space-y-2" id="confirmed-list">
             @foreach($accepted as $req)
             <div class="flex items-center gap-3">
                 <img src="{{ $req->passenger->avatar ?? '' }}"
@@ -77,20 +76,11 @@
                     <p class="text-sm font-medium text-gray-800">{{ $req->passenger->name }}</p>
                     <p class="text-xs text-gray-400">{{ $req->passenger->email }}</p>
                 </div>
-                <div class="flex items-center gap-2 ml-auto flex-shrink-0">
-                    @if($req->ride)
-                    <a href="{{ route('rides.drive', $req->ride) }}"
-                       class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-lg transition">
-                        ▶ Iniciar corrida →
-                    </a>
-                    @endif
-                    <span class="text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full">Confirmado</span>
-                </div>
+                <span class="text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full">Confirmado</span>
             </div>
             @endforeach
         </div>
     </div>
-    @endif
 
     {{-- Solicitações pendentes --}}
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
@@ -122,6 +112,18 @@
             <p class="text-sm text-gray-400 text-center py-2" id="empty-msg">Nenhuma solicitação pendente.</p>
             @endforelse
         </div>
+    </div>
+
+    {{-- Iniciar corrida (acima de Cancelar viagem) --}}
+    @php $rideLinks = $accepted->filter(fn($r) => $r->ride && in_array($r->ride->status, ['accepted', 'in_progress'])); @endphp
+    <div id="start-ride-section" class="{{ $rideLinks->isEmpty() ? 'hidden' : '' }} space-y-2">
+        @foreach($rideLinks as $req)
+        <a id="start-ride-{{ $req->id }}"
+           href="{{ route('rides.drive', $req->ride) }}"
+           class="flex w-full items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition text-sm shadow">
+            ▶ Iniciar corrida com {{ $req->passenger->name }}
+        </a>
+        @endforeach
     </div>
 
     {{-- Cancelar viagem --}}
@@ -194,17 +196,61 @@ const csrf = document.querySelector("meta[name='csrf-token']").content;
 async function acceptReq(tripId, reqId, btn) {
     if (btn) { btn.disabled = true; btn.textContent = "Aceitando..."; }
     try {
-        const res = await fetch(`/trips/${tripId}/requests/${reqId}/accept`, {
+        const res  = await fetch(`/trips/${tripId}/requests/${reqId}/accept`, {
             method: "POST", headers: { "X-CSRF-TOKEN": csrf, "Accept": "application/json" },
         });
-        if (res.ok) { location.reload(); }
-        else {
-            const d = await res.json();
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById(`req-${reqId}`)?.remove();
+            checkEmpty();
+            addConfirmed(data.request);
+        } else {
             if (btn) { btn.disabled = false; btn.textContent = "Aceitar"; }
-            alert(d.message ?? "Erro ao aceitar.");
+            alert(data.message ?? "Erro ao aceitar.");
         }
     } catch {
         if (btn) { btn.disabled = false; btn.textContent = "Aceitar"; }
+    }
+}
+
+function addConfirmed(req) {
+    const section  = document.getElementById('confirmed-section');
+    const list     = document.getElementById('confirmed-list');
+    const heading  = document.getElementById('confirmed-heading');
+    const startSec = document.getElementById('start-ride-section');
+    if (!section || !list) return;
+
+    section.classList.remove('hidden');
+
+    const name = req.passenger?.name ?? '—';
+    const card = document.createElement('div');
+    card.className = 'flex items-center gap-3';
+    card.innerHTML = `
+        <img src="${req.passenger?.avatar ?? ''}"
+             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2563eb&color=fff&size=40'"
+             class="w-9 h-9 rounded-full object-cover border border-gray-200">
+        <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-800">${name}</p>
+            <p class="text-xs text-gray-400">${req.scheduled_for ?? ''}</p>
+        </div>
+        <span class="text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full">Confirmado</span>`;
+    list.appendChild(card);
+
+    if (heading) {
+        const cur = parseInt(heading.textContent.match(/\d+/)?.[0] ?? '0');
+        heading.textContent = `Passageiros confirmados (${cur + 1})`;
+    }
+
+    if (req.ride_url && startSec) {
+        startSec.classList.remove('hidden');
+        if (!document.getElementById(`start-ride-${req.id}`)) {
+            const a = document.createElement('a');
+            a.id        = `start-ride-${req.id}`;
+            a.href      = req.ride_url;
+            a.className = 'flex w-full items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition text-sm shadow';
+            a.textContent = `▶ Iniciar corrida com ${name}`;
+            startSec.appendChild(a);
+        }
     }
 }
 
@@ -227,17 +273,17 @@ async function rejectReq(tripId, reqId, btn) {
 }
 
 function checkEmpty() {
-    const list = document.getElementById("pending-list");
-    if (list && !list.querySelector('[id^="req-"]')) {
-        const counter = document.getElementById("pending-count");
-        if (counter) counter.textContent = "0";
-        if (!document.getElementById("empty-msg")) {
-            const p = document.createElement("p");
-            p.id = "empty-msg";
-            p.className = "text-sm text-gray-400 text-center py-2";
-            p.textContent = "Nenhuma solicitação pendente.";
-            list.appendChild(p);
-        }
+    const list      = document.getElementById("pending-list");
+    const counter   = document.getElementById("pending-count");
+    if (!list) return;
+    const remaining = list.querySelectorAll('[id^="req-"]').length;
+    if (counter) counter.textContent = remaining;
+    if (remaining === 0 && !document.getElementById("empty-msg")) {
+        const p = document.createElement("p");
+        p.id = "empty-msg";
+        p.className = "text-sm text-gray-400 text-center py-2";
+        p.textContent = "Nenhuma solicitação pendente.";
+        list.appendChild(p);
     }
 }
 
