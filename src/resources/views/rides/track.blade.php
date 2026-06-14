@@ -481,6 +481,7 @@ window.addEventListener('echo:RideStarted', () => {
 
 // RideCancelledByDriver — motorista cancelou
 window.addEventListener('echo:RideCancelledByDriver', () => {
+    if (TERMINAL.includes(currentStatus)) return;
     currentStatus = 'cancelled';
     clearInterval(polling);
     updateBanner('cancelled');
@@ -488,6 +489,7 @@ window.addEventListener('echo:RideCancelledByDriver', () => {
     document.getElementById('rate-section')?.classList.add('hidden');
     document.getElementById('board-section')?.classList.add('hidden');
     document.getElementById('boarded-waiting-section')?.classList.add('hidden');
+    setTimeout(() => { window.location.href = '{{ route("dashboard") }}'; }, 2500);
 });
 
 // FixedRoutePaused — motorista pausou a rota fixa
@@ -575,12 +577,18 @@ function applyStatus(data) {
     else                                                                                                               ui = "waiting";
 
     if (ui !== currentStatus) {
+        const wasTerminal   = TERMINAL.includes(currentStatus);
         const wasInProgress = currentStatus === 'in_progress';
         currentStatus = ui;
         updateBanner(ui);
         updateDriverCard(data.ride);
         updateCancelSection(reqStatus, rideStatus);
-        if (TERMINAL.includes(ui)) clearInterval(polling);
+        if (TERMINAL.includes(ui)) {
+            clearInterval(polling);
+            if (!wasTerminal && ui === 'cancelled') {
+                setTimeout(() => { window.location.href = '{{ route("dashboard") }}'; }, 2500);
+            }
+        }
         if (ui === 'in_progress' && !wasInProgress) {
             if (typeof expandTrackMap === 'function') expandTrackMap();
             if (typeof startTrackAutoZoom === 'function') startTrackAutoZoom();
