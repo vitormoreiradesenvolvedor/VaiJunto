@@ -120,7 +120,7 @@
     @else
 
     {{-- Iniciar corrida (acima de Pausar rota) --}}
-    @php $rideLinks = $accepted->filter(fn($r) => $r->ride); @endphp
+    @php $rideLinks = $accepted->filter(fn($r) => $r->ride && in_array($r->ride->status, ['accepted', 'in_progress'])); @endphp
     <div id="start-ride-section" class="{{ $rideLinks->isEmpty() ? 'hidden' : '' }} space-y-2">
         @foreach($rideLinks as $req)
         <a id="start-ride-{{ $req->id }}"
