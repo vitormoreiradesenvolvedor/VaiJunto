@@ -653,8 +653,8 @@ let rideStatusPoller = setInterval(async () => {
             rideStatus = 'cancelled';
             updateStatusBanner('cancelled');
             document.getElementById('action-section').innerHTML =
-                '<div class="bg-red-50 border border-red-300 rounded-xl p-4 text-center text-red-700 text-sm font-medium">❌ O passageiro cancelou a carona.</div>';
-            setTimeout(() => { window.location.href = "{{ route('dashboard') }}"; }, 3000);
+                '<div class="bg-red-50 border border-red-300 rounded-xl p-4 text-center text-red-700 text-sm font-medium">❌ Carona cancelada. Redirecionando...</div>';
+            setTimeout(() => { window.location.href = "{{ route('dashboard') }}"; }, 1500);
         }
     } catch { /* ignora */ }
 }, 2000);

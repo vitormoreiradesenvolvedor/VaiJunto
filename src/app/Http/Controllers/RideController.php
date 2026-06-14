@@ -230,9 +230,11 @@ class RideController extends Controller
 
     public function cancel(Ride $ride, Request $request): JsonResponse
     {
+        abort_if($ride->driver_id !== auth()->id(), 403);
         $request->validate(['reason' => 'required|string']);
 
         $this->rideService->cancel($ride, $request->input('reason'));
+        $ride->rideRequest?->update(['status' => 'cancelled']);
 
         RideCancelledByDriver::dispatch($ride);
 
